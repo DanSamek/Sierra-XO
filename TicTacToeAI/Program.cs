@@ -1,7 +1,7 @@
 ﻿namespace TicTacToeAI;
 public class Program
 {
-    static int MapSize = 4;
+    static int MapSize = 10;
     static bool SomeoneWins = false;
     static int WinCount = 4;
     static int[] players = { 1, -1 };
@@ -205,16 +205,33 @@ public class Program
     static void AI(int[,] map)
     {
         // AI is maximalizer
+
+        var optimalPos = PositionsToCheck(map);
+
         int maxValue = int.MinValue;
         int bestX = 0;
         int bestY = 0;
         int beta = int.MaxValue;
         int alpha = int.MinValue;
+        // todo remove full foreach, only foreach optimalPos
+        foreach (var arr in optimalPos)
+        {
+            map[arr[0], arr[1]] = -1;
+            var value = Minimax(map, 7, false, alpha, beta);
+            map[arr[0], arr[1]] = 0;
+            if (value > maxValue)
+            {
+                maxValue = value;
+                bestX = arr[0];
+                bestY = arr[1];
+            }
+        }
+        /*
         for (int y = 0; y < MapSize; y++)
         {
             for (int x = 0; x < MapSize; x++)
             {
-                if (map[x,y] == 0)
+                if (map[x,y] == 0 && optimalPos.Any(arr => arr[0] == x && arr[1] == y))
                 {
                     map[x, y] = -1;
                     var value = Minimax(map, 5, false, alpha, beta);
@@ -227,7 +244,7 @@ public class Program
                     }
                 }
             }
-        }
+        }*/
         map[bestX, bestY] = -1;
     }
     
@@ -240,16 +257,35 @@ public class Program
             return outValue * depth;
         }
         if(depth == 0 || !SomethingToPlay(map)) return 0;
+
+        var optimalPos = PositionsToCheck(map);
         // for maximalizer
         if (isMaximalizer)
         {
             int maxValue = int.MinValue;
             int possibleMaxValue = (depth -1) * 10;
+            // todo remove full foreach, only foreach optimalPos
+
+
+            foreach (var arr in optimalPos)
+            {
+                map[arr[0], arr[1]] = -1;
+                var value = Minimax(map, depth - 1, false, alpha, beta);
+                map[arr[0], arr[1]] = 0;
+                maxValue = Math.Max(value, maxValue);
+                alpha = Math.Max(alpha, maxValue);
+                if (possibleMaxValue == maxValue) break;
+                // beta cut
+                if (maxValue >= beta) break;
+            }
+        
+
+            /*
             for (int y = 0; y < MapSize; y++)
             {
                 for (int x = 0; x < MapSize; x++)
                 {
-                    if (map[x, y] == 0)
+                    if (map[x, y] == 0 && optimalPos.Any(arr => arr[0] == x && arr[1] == y))
                     {
                         map[x, y] = -1;
                         var value = Minimax(map, depth-1, false, alpha, beta);
@@ -261,7 +297,7 @@ public class Program
                         if (maxValue >= beta) break;
                     }
                 }
-            }
+            }*/
             return maxValue;
         }
 
@@ -270,11 +306,27 @@ public class Program
         {
             int maxValue = int.MaxValue;
             int possibleMaxValue = (depth - 1) * -10;
+
+            foreach (var arr in optimalPos)
+            {
+                map[arr[0], arr[1]] = 1;
+                var value = Minimax(map, depth - 1, true, alpha, beta);
+                map[arr[0], arr[1]] =0 ;
+                maxValue = Math.Min(value, maxValue);
+                beta = Math.Min(maxValue, beta);
+                if (possibleMaxValue == maxValue) break;
+                // alpha cut
+                if (maxValue <= alpha) break;
+            }
+
+
+            // todo remove full foreach, only foreach optimalPos
+            /*
             for (int y = 0; y < MapSize; y++)
             {
                 for (int x = 0; x < MapSize; x++)
                 {
-                    if (map[x, y] == 0)
+                    if (map[x, y] == 0 && optimalPos.Any(arr => arr[0] == x && arr[1] == y) )
                     {
                         map[x, y] = 1;
                         var value = Minimax(map, depth - 1, true, alpha, beta);
@@ -287,6 +339,7 @@ public class Program
                     }
                 }
             }
+            */
             return maxValue;
         }
         return 0;
@@ -305,9 +358,54 @@ public class Program
     {
         HashSet<int[]> optimalPositions = new HashSet<int[]>();
         // Vybírat tahy přímo připojené
+		
+		for(int y =0;y < MapSize;y++)
+		{
+			for(int x = 0; x < MapSize; x++)
+            {
+                if (map[x, y] != 0)
+                {
+                    // X
+                    if(!optimalPositions.Any(arr => arr[0] == x+1 && arr[1] == y)) 
+                        if (x + 1 < MapSize && map[x+1, y] == 0) 
+                            optimalPositions.Add(new int[] { x + 1, y });
+
+                    if(!optimalPositions.Any(arr => arr[0] == x - 1 && arr[1] == y )) 
+                        if (x - 1 < MapSize && x -1 >=0 && map[x-1,y] ==0 )
+                            optimalPositions.Add(new int[] { x - 1, y });
+
+                    // Y
+                    if(!optimalPositions.Any(arr => arr[0] == x && arr[1]== y + 1 )) 
+                        if (y + 1 < MapSize && map[x,y+1] == 0)
+                            optimalPositions.Add(new int[] { x , y+1 });
+
+                    if (!optimalPositions.Any(arr => arr[0] == x && arr[1] == y - 1 ))
+                        if (y - 1 < MapSize && y - 1 >= 0 && map[x,y-1] == 0) 
+                            optimalPositions.Add(new int[] { x , y - 1});
+
+                    //DIAGONAL
+                    if (!optimalPositions.Any(arr => arr[0] == x - 1 && arr[1] == y - 1 ))
+                        if (x - 1 >= 0 && y - 1 >= 0 && map[x - 1,y-1] == 0)
+                            optimalPositions.Add(new int[] { x - 1, y-1 });
 
 
+                    if (!optimalPositions.Any(arr => arr[0] == x + 1 && arr[1] == y + 1 ))
+                        if (x + 1 < MapSize && y + 1 < MapSize && map[x+1,y+1] == 0)
+                            optimalPositions.Add(new int[] { x + 1, y + 1 });
 
+                    if(!optimalPositions.Any(arr => arr[0] == x - 1 && arr[1] == y + 1 ))  
+                        if(x-1 >= 0 && y+1 < MapSize && map[x-1, y+1] ==0)
+                            optimalPositions.Add(new int[] { x - 1, y + 1 });
+
+
+                    if(!optimalPositions.Contains(new int[] { x + 1, y - 1 })) 
+                        if(x+1 < MapSize && y -1 >= 0 && map[x+1, y-1] == 0) 
+                            optimalPositions.Add(new int[] { x + 1, y - 1 });
+
+                }
+            }
+		}
+		
         return optimalPositions;
     }
 }
