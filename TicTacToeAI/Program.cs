@@ -1,16 +1,16 @@
 ﻿namespace TicTacToeAI;
 public class Program
 {
-    static int MapSize = 10;
+    static int MapSize = 7;
     static bool SomeoneWins = false;
-    static int WinCount = 4;
+    static int WinCount = 5;
     static int[] players = { 1, -1 };
     static bool AIFirstMove = true;
     static bool PlayerStarted { get; set; }
     static int PlayerStartX { get; set; }
     static int PlayerStartY { get; set; }
 
-
+    // TODO 2)Multithreading +  1)TransitionTables => fast depth 5 and more
     public static void Main(string[] args)
     {
         int[,] map = new int[MapSize, MapSize];
@@ -213,7 +213,6 @@ public class Program
         int bestY = 0;
         int beta = int.MaxValue;
         int alpha = int.MinValue;
-        // todo remove full foreach, only foreach optimalPos
         foreach (var arr in optimalPos)
         {
             map[arr[0], arr[1]] = -1;
@@ -226,25 +225,6 @@ public class Program
                 bestY = arr[1];
             }
         }
-        /*
-        for (int y = 0; y < MapSize; y++)
-        {
-            for (int x = 0; x < MapSize; x++)
-            {
-                if (map[x,y] == 0 && optimalPos.Any(arr => arr[0] == x && arr[1] == y))
-                {
-                    map[x, y] = -1;
-                    var value = Minimax(map, 5, false, alpha, beta);
-                    map[x, y] = 0;
-                    if (value > maxValue)
-                    {
-                        maxValue = value;
-                        bestX = x;
-                        bestY = y;
-                    }
-                }
-            }
-        }*/
         map[bestX, bestY] = -1;
     }
     
@@ -256,7 +236,13 @@ public class Program
             int outValue = player == 1 ? -10 : 10;
             return outValue * depth;
         }
-        if(depth == 0 || !SomethingToPlay(map)) return 0;
+
+        if(depth == 0)
+        {
+            var outValue = CalculateCurrentPosition(map, isMaximalizer);
+            return outValue * depth;
+        }
+        if (!SomethingToPlay(map)) return 0;
 
         var optimalPos = PositionsToCheck(map);
         // for maximalizer
@@ -278,26 +264,7 @@ public class Program
                 // beta cut
                 if (maxValue >= beta) break;
             }
-        
-
-            /*
-            for (int y = 0; y < MapSize; y++)
-            {
-                for (int x = 0; x < MapSize; x++)
-                {
-                    if (map[x, y] == 0 && optimalPos.Any(arr => arr[0] == x && arr[1] == y))
-                    {
-                        map[x, y] = -1;
-                        var value = Minimax(map, depth-1, false, alpha, beta);
-                        map[x, y] = 0;
-                        maxValue = Math.Max(value, maxValue);
-                        alpha = Math.Max(alpha, maxValue);
-                        if (possibleMaxValue == maxValue) break;
-						// beta cut
-                        if (maxValue >= beta) break;
-                    }
-                }
-            }*/
+       
             return maxValue;
         }
 
@@ -318,28 +285,6 @@ public class Program
                 // alpha cut
                 if (maxValue <= alpha) break;
             }
-
-
-            // todo remove full foreach, only foreach optimalPos
-            /*
-            for (int y = 0; y < MapSize; y++)
-            {
-                for (int x = 0; x < MapSize; x++)
-                {
-                    if (map[x, y] == 0 && optimalPos.Any(arr => arr[0] == x && arr[1] == y) )
-                    {
-                        map[x, y] = 1;
-                        var value = Minimax(map, depth - 1, true, alpha, beta);
-                        map[x, y] = 0;
-                        maxValue = Math.Min(value, maxValue);
-                        beta = Math.Min(maxValue, beta);
-                        if (possibleMaxValue == maxValue) break;
-                        // alpha cut
-                        if (maxValue <= alpha) break;
-                    }
-                }
-            }
-            */
             return maxValue;
         }
         return 0;
@@ -407,5 +352,110 @@ public class Program
 		}
 		
         return optimalPositions;
+    }
+
+    /// <summary>
+    /// Podle počtu jedniček, dvojek, trojek, čtyřek
+    /// </summary>
+    static int CalculateCurrentPosition(int[,] map, bool isMaximalizer)
+    {
+        // AI = Maximalizer
+        var player = isMaximalizer ? -1 : 1;
+
+        int[] cals = new int[6];
+
+        for (int y = 0; y < MapSize; y++)
+        { 
+            for (int x = 0; x < MapSize; x++)
+            {
+                // check for horizontal
+                if (x + WinCount <= MapSize)
+                {
+                    int count = 0;
+                    for (int i = 0; i < WinCount; i++)
+                    {
+                        if (map[x + i, y] == player)
+                            count++;
+                        else
+                        {
+                            if (count == 1 || count == 0)
+                            {
+                                count = 0;
+                                continue;
+                            }
+                            cals[count]++;
+                            count = 0;
+                        }
+                    }
+                }
+                // check for vertical
+                if (y + WinCount <= MapSize)
+                {
+                    int count = 0;
+                    for (int i = 0; i < WinCount; i++)
+                    {
+                        if (map[x, y + i] == player)
+                            count++;
+                        else
+                        {
+                            if (count == 1 || count == 0)
+                            {
+                                count = 0; 
+                                continue;
+                            }
+                            cals[count]++;
+                        }
+                    }
+                    
+                }
+                // check for diagonal win
+                if (x + WinCount < MapSize + 1 && y + WinCount - 1 < MapSize)
+                {
+                    int count = 0;
+                    for (int i = 0; i < WinCount; i++)
+                    {
+                        if (map[x + i, y + i] == player) count++;
+                        else
+                        {
+                            if (count == 1 || count == 0)
+                            {
+                                count = 0;
+                                continue;
+                            }
+                            cals[count]++;
+                            count = 0;
+                        }
+                        
+                    }
+                }
+                // check for anti diagonal
+                if (x + WinCount < MapSize + 1 && y - WinCount >= -1)
+                {
+                    int count = 0;
+                    for (int i = 0; i < WinCount; i++)
+                    {
+                        if (map[x + i, y - i] == player) count++;
+                        else
+                        {
+                            if (count == 1 || count ==0)
+                            {
+                                count = 0;
+                                continue;
+                            }
+                            cals[count]++;
+                            count = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        var finalValue = 0;
+        for (int i = 0; i < cals.Length; i++)
+        {
+            finalValue+= cals[i] * i;
+        }
+        finalValue = isMaximalizer ? (finalValue / 10) : -(finalValue / 10);
+        return finalValue;
     }
 }
