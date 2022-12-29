@@ -1,9 +1,10 @@
 ﻿namespace TicTacToeAI;
 public class Program
 {
-    static int MapSize = 7;
-    static bool SomeoneWins = false;
+    static int MapSize = 15;
     static int WinCount = 5;
+    static int Depth = 4;
+    static bool SomeoneWins = false;
     static int[] players = { 1, -1 };
     static bool AIFirstMove = true;
     static bool PlayerStarted { get; set; }
@@ -23,13 +24,12 @@ public class Program
             if (playerPlays)
             {
                 DrawMap(map);
-                var pos = Console.ReadLine();
-                if (!int.TryParse(pos[0].ToString(), out int x)) continue;
-                if (!int.TryParse(pos[1].ToString(), out int y)) continue;
-				if(map[x, y] != 0) continue;
-                PlayerStartX = x;
-                PlayerStartY = y;
-                map[x, y] = 1;
+                var posX = int.Parse(Console.ReadLine());
+                var posY = int.Parse(Console.ReadLine());
+				if(map[posX, posY] != 0) continue;
+                PlayerStartX = posX;
+                PlayerStartY = posY;
+                map[posX, posY] = 1;
                 if (CheckWin(map, out var player))
                 {    
                     SomeoneWins = true;
@@ -107,7 +107,10 @@ public class Program
                 if (map[y, i] != 0)
                 {
                     var customize = map[y, i] == 1 ? "X" : "O";
+                    var color = customize == "X" ? ConsoleColor.Red : ConsoleColor.Green;
+                    Console.ForegroundColor = color;
                     Console.Write($"{customize}    ");
+                    Console.ForegroundColor = ConsoleColor.White;
                     continue;
                 }
                 Console.Write($"{y}{i}   ");
@@ -216,13 +219,15 @@ public class Program
         foreach (var arr in optimalPos)
         {
             map[arr[0], arr[1]] = -1;
-            var value = Minimax(map, 7, false, alpha, beta);
+            var value = Minimax(map, Depth, false, alpha, beta);
             map[arr[0], arr[1]] = 0;
             if (value > maxValue)
             {
                 maxValue = value;
                 bestX = arr[0];
                 bestY = arr[1];
+                if (maxValue >= 10)
+                    break;
             }
         }
         map[bestX, bestY] = -1;
@@ -308,25 +313,54 @@ public class Program
 		{
 			for(int x = 0; x < MapSize; x++)
             {
-                if (map[x, y] != 0)
+                if (map[x, y] != 0 && map[x, y] != -1)
                 {
                     // X
+                    //+1
                     if(!optimalPositions.Any(arr => arr[0] == x+1 && arr[1] == y)) 
                         if (x + 1 < MapSize && map[x+1, y] == 0) 
                             optimalPositions.Add(new int[] { x + 1, y });
 
-                    if(!optimalPositions.Any(arr => arr[0] == x - 1 && arr[1] == y )) 
+                    //+2
+                    if (!optimalPositions.Any(arr => arr[0] == x + 2 && arr[1] == y))
+                        if (x + 2 < MapSize && map[x + 2, y] == 0)
+                            optimalPositions.Add(new int[] { x + 2, y });
+
+
+                    // +1
+                    if (!optimalPositions.Any(arr => arr[0] == x - 1 && arr[1] == y )) 
                         if (x - 1 < MapSize && x -1 >=0 && map[x-1,y] ==0 )
                             optimalPositions.Add(new int[] { x - 1, y });
 
+                    // +2
+                    if (!optimalPositions.Any(arr => arr[0] == x - 2 && arr[1] == y))
+                        if (x - 2 < MapSize && x - 2 >= 0 && map[x - 2, y] == 0)
+                            optimalPositions.Add(new int[] { x - 2, y });
+
+
                     // Y
-                    if(!optimalPositions.Any(arr => arr[0] == x && arr[1]== y + 1 )) 
+                    // +1
+                    if (!optimalPositions.Any(arr => arr[0] == x && arr[1]== y + 1 )) 
                         if (y + 1 < MapSize && map[x,y+1] == 0)
                             optimalPositions.Add(new int[] { x , y+1 });
 
+
+                    if (!optimalPositions.Any(arr => arr[0] == x && arr[1] == y + 2))
+                        if (y + 2 < MapSize && map[x, y + 2] == 0)
+                            optimalPositions.Add(new int[] { x, y + 2 });
+
+
+                    //+1
                     if (!optimalPositions.Any(arr => arr[0] == x && arr[1] == y - 1 ))
                         if (y - 1 < MapSize && y - 1 >= 0 && map[x,y-1] == 0) 
                             optimalPositions.Add(new int[] { x , y - 1});
+
+
+                    // +2
+                    if (!optimalPositions.Any(arr => arr[0] == x && arr[1] == y - 2))
+                        if (y - 2 < MapSize && y - 2 >= 0 && map[x, y - 2] == 0)
+                            optimalPositions.Add(new int[] { x, y - 2 });
+
 
                     //DIAGONAL
                     if (!optimalPositions.Any(arr => arr[0] == x - 1 && arr[1] == y - 1 ))
@@ -334,18 +368,43 @@ public class Program
                             optimalPositions.Add(new int[] { x - 1, y-1 });
 
 
+                    if (!optimalPositions.Any(arr => arr[0] == x - 2 && arr[1] == y - 2))
+                        if (x - 2 >= 0 && y - 2 >= 0 && map[x - 2, y - 2] == 0)
+                            optimalPositions.Add(new int[] { x - 2, y - 2 });
+
+
+
+                    // +1
                     if (!optimalPositions.Any(arr => arr[0] == x + 1 && arr[1] == y + 1 ))
                         if (x + 1 < MapSize && y + 1 < MapSize && map[x+1,y+1] == 0)
                             optimalPositions.Add(new int[] { x + 1, y + 1 });
 
-                    if(!optimalPositions.Any(arr => arr[0] == x - 1 && arr[1] == y + 1 ))  
+
+                    // +2
+                    if (!optimalPositions.Any(arr => arr[0] == x + 2 && arr[1] == y + 2))
+                        if (x + 2 < MapSize && y + 2 < MapSize && map[x + 2, y + 2] == 0)
+                            optimalPositions.Add(new int[] { x + 2, y + 2 });
+
+
+                    //+1
+                    if (!optimalPositions.Any(arr => arr[0] == x - 1 && arr[1] == y + 1 ))  
                         if(x-1 >= 0 && y+1 < MapSize && map[x-1, y+1] ==0)
                             optimalPositions.Add(new int[] { x - 1, y + 1 });
 
+                    //+2
+                    if (!optimalPositions.Any(arr => arr[0] == x - 2 && arr[1] == y + 2))
+                        if (x - 2 >= 0 && y + 2 < MapSize && map[x - 2, y + 2] == 0)
+                            optimalPositions.Add(new int[] { x - 2, y + 2 });
 
-                    if(!optimalPositions.Contains(new int[] { x + 1, y - 1 })) 
+                    // +1
+                    if (!optimalPositions.Any(arr => arr[0] ==  x + 1 && arr[1] == y - 1 )) 
                         if(x+1 < MapSize && y -1 >= 0 && map[x+1, y-1] == 0) 
                             optimalPositions.Add(new int[] { x + 1, y - 1 });
+                    // +2
+                    if (!optimalPositions.Any(arr => arr[0] == x + 2 && arr[1] == y - 2))
+                        if (x + 2 < MapSize && y - 2 >= 0 && map[x + 2, y - 2] == 0)
+                            optimalPositions.Add(new int[] { x + 2, y - 2 });
+
 
                 }
             }
