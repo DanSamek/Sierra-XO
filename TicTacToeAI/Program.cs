@@ -14,6 +14,9 @@ public class Program
     // TODO 2)Multithreading +  1)TransitionTables => fast depth 5 and more
     public static void Main(string[] args)
     {
+
+        EvalutationTests();
+        return;
         TicTacToe();
     }
 
@@ -465,6 +468,10 @@ public class Program
         DFSPoint start = new();
         start.X = startX;
         start.Y = startY;
+        if(startX == 3 && startY == 2)
+        {
+
+        }
 
         bool[,] notNeight = new bool[MapSize, MapSize];
         bool[,] globalVisited = new bool[MapSize, MapSize];
@@ -493,10 +500,12 @@ public class Program
                     positionStates.Add(outPoints);
                     continue;
                 }
-                while (parent?.Parent != null)
+                bool toBreak = false;
+                while (parent != null)
                 {
                     currentP = parent;
                     parent = parent.Parent;
+
 
                     if (first)
                     {
@@ -504,36 +513,39 @@ public class Program
                         yDiff = parent.Y - currentP.Y;
                     }
                     
-                    if(parent != null)
+                    if(parent != null && (xDiff != parent.X - currentP.X || yDiff != parent.Y - currentP.Y) && !first)
                     {
                         // kontrola jiného směru
-                        if ((xDiff != parent.X - currentP.X || yDiff != parent.Y - currentP.Y) && !first)
-                        {
-                            xDiff = parent.X - currentP.X;
-                            yDiff = parent.Y - currentP.Y;
+                        xDiff = parent.X - currentP.X;
+                        yDiff = parent.Y - currentP.Y;
 
-                            count = outPoints.Count;
-                            maxSameCount = 0;
-                            foreach (var ps in positionStates)
+                        count = outPoints.Count;
+                        maxSameCount = 0;
+                        foreach (var ps in positionStates)
+                        {
+                            int checkCount = 0;
+                            foreach (var p in outPoints)
                             {
-                                int checkCount = 0;
-                                foreach (var p in outPoints)
-                                {
-                                    if (ps.Any(x => x.X == p.X && x.Y == p.Y))
-                                        checkCount++;
-                                }
-                                if (checkCount > maxSameCount) maxSameCount = checkCount;
+                                if (ps.Any(x => x.X == p.X && x.Y == p.Y)) checkCount++;
                             }
-                            if (count == maxSameCount) continue;
+                            if (checkCount > maxSameCount) maxSameCount = checkCount;
+                            if (count == maxSameCount) 
+                            {
+                                toBreak = true;
+                                break;
+                            }
+                        }
+                        if (!toBreak)
+                        {
                             positionStates.Add(outPoints);
                             outPoints = new();
-                            
                             outPoints.Add(currentP);
                         }
                     }
                     if(parent != null) outPoints.Add(parent);
                     first = false;
                 }
+                if (toBreak) continue;
                 count = outPoints.Count;
                 maxSameCount = 0;
                 foreach (var ps in positionStates)
@@ -541,13 +553,16 @@ public class Program
                     int checkCount = 0;
                     foreach (var p in outPoints)
                     {
-                        if (ps.Any(x => x.X == p.X && x.Y == p.Y))
-                            checkCount++;
+                        if (ps.Any(x => x.X == p.X && x.Y == p.Y)) checkCount++;
                     }
                     if (checkCount > maxSameCount) maxSameCount = checkCount;
+                    if (count == maxSameCount)
+                    {
+                        toBreak = true;
+                        break;
+                    }
                 }
-                if (count == maxSameCount) continue;
-                positionStates.Add(outPoints);
+                if(!toBreak) positionStates.Add(outPoints);
             }
             foreach (var n in neighbours) stack.Push(n);
         }
@@ -653,15 +668,51 @@ public class Program
 
 
         testMap = new int[5, 5]
-{
+        {
             { 0,0,0,0,0 },
             { 0,0,0,0,0 },
             { -1,-1,-1,-1,-1 },
             { 0,0,0,0,0 },
             { 0,0,0,0,0 }
-};
+        };
         eval = CalculateCurrentPosition(testMap, true);
         AreEqual(eval, 0.5);
+
+
+
+        testMap = new int[5, 5]
+        {
+            { 0,0,0,0,0 },
+            { 1,0,0,0,0 },
+            { 1,-1,-1,-1,1 },
+            { -1,0,0,0,0 },
+            { 0,0,0,0,0 }
+        };
+        eval = CalculateCurrentPosition(testMap, true);
+        AreEqual(eval, 0.5);
+
+        testMap = new int[5, 5]
+        {
+            {0,0,0,0,0},
+            {-1,0,0,0,0},
+            {-1,1,1,1,-1},
+            {0,0,1,0,0},
+            {0,0,0,0,0}
+        };
+        eval = CalculateCurrentPosition(testMap, false);
+        AreEqual(eval, -0.9);
+
+
+        testMap = new int[5, 5]
+        {
+            {0,0,0,0,0},
+            {-1,0,1,0,0},
+            {-1,1,1,1,-1},
+            {0,0,1,0,0},
+            {0,0,0,0,0}
+        };
+        eval = CalculateCurrentPosition(testMap, false);
+        AreEqual(eval, -1.4);
     }
 
     static void AreEqual(double eval, double exepted)
