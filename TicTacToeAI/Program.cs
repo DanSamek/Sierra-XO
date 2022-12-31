@@ -1,9 +1,12 @@
-﻿using System.Collections;
+﻿using System.Diagnostics;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace TicTacToeAI;
 public class Program
 {
-    static int MapSize = 10;
+    public static int MapSize = 10;
     static int WinCount = 5;
     static int Depth = 5;
     static bool SomeoneWins = false;
@@ -11,7 +14,9 @@ public class Program
     static bool AIFirstMove = true;
     static bool PlayerStarted { get; set; }
     static int PlayerStartX { get; set; }
-    static int PlayerStartY { get; set; } 
+    static int PlayerStartY { get; set; }
+
+    static object _lock = new object();
 
     // TODO 2)Multithreading +  1)TransitionTables => fast depth 5 and more
     public static void Main(string[] args)
@@ -27,11 +32,12 @@ public class Program
         var random = new Random();
         bool playerPlays = random.Next(0, 100) > 50;
         PlayerStarted = playerPlays;
+        PlayerStarted = false;
         do
         {
             if (playerPlays)
             {
-                Console.Clear();
+                //Console.Clear();
                 DrawMap(map);
                 var valueX = Console.ReadLine();
                 var valueY = Console.ReadLine();
@@ -48,7 +54,7 @@ public class Program
                 }
                 if (!SomethingToPlay(map))
                 {
-                    Console.Clear();
+                    //Console.Clear();
                     DrawMap(map);
                     Console.WriteLine("DRAW");
                     return;
@@ -84,7 +90,7 @@ public class Program
                 }
                 if (!SomethingToPlay(map))
                 {
-                    Console.Clear();
+                    //Console.Clear();
                     DrawMap(map);
                     Console.WriteLine("DRAW");
                     return;
@@ -214,7 +220,6 @@ public class Program
     static void AI(int[,] map)
     {
         // AI is maximalizer
-
         var optimalPos = PositionsToCheck(map);
 
         double maxValue = int.MinValue;
@@ -222,25 +227,51 @@ public class Program
         int bestY = 0;
         double beta = int.MaxValue;
         double alpha = int.MinValue;
+
+        Stopwatch stopwatch = new();
+        stopwatch.Start();
+
+        List<EvalPoint> evalPoints = new();
         foreach (var arr in optimalPos)
         {
             map[arr[0], arr[1]] = -1;
-            var value = Minimax(map, Depth, false, alpha, beta);
+            var eval = CalculateCurrentPosition(map, true);
             map[arr[0], arr[1]] = 0;
+            evalPoints.Add(new EvalPoint()
+            {
+                Eval = eval,
+                X = arr[1],
+                Y = arr[0]
+            });
+        }
+        var avg = evalPoints.OrderByDescending(x => x.Eval).ToList();
+        
+        foreach (var arr in avg)
+        {
+            map[arr.Y, arr.X] = -1;
+            var value = Minimax(map, Depth, false, alpha, beta);
+            map[arr.Y, arr.X] = 0;
             if (value > maxValue)
             {
                 maxValue = value;
-                bestX = arr[0];
-                bestY = arr[1];
-                if (maxValue >= 10)
-                    break;
+                bestX = arr.Y;
+                bestY = arr.X;
+                if (maxValue >= 10) break;
             }
         }
+
+
+        stopwatch.Stop();
+        // NO - 4,732 s
+        Console.WriteLine($"{stopwatch.ElapsedMilliseconds} ms");
+        Console.WriteLine($"{stopwatch.ElapsedMilliseconds/(double)1000} s");
         map[bestX, bestY] = -1;
+        TranspositionTable.ClearTable();
     }
     
     static double Minimax(int[,] map, int depth, bool isMaximalizer, double alpha, double beta)
     {
+        //if(TranspositionTable.DoesPosExists(map, depth, isMaximalizer,out double? storedValue)) return storedValue.Value;
 
         if(CheckWin(map, out int player))
         {
@@ -253,50 +284,61 @@ public class Program
             var outValue = CalculateCurrentPosition(map, isMaximalizer);
             return outValue;
         }
-        if (!SomethingToPlay(map)) 
-            return 0;
-
+        if (!SomethingToPlay(map)) return 0;
         var optimalPos = PositionsToCheck(map);
+        List<EvalPoint> evalPoints = new();
+        foreach (var arr in optimalPos)
+        {
+            map[arr[0], arr[1]] = -1;
+            var eval = CalculateCurrentPosition(map, isMaximalizer);
+            map[arr[0], arr[1]] = 0;
+            evalPoints.Add(new EvalPoint()
+            {
+                Eval = eval,
+                X = arr[1],
+                Y = arr[0]
+            });
+        }
+
         // for maximalizer
         if (isMaximalizer)
         {
             double maxValue = int.MinValue;
             int possibleMaxValue = (depth -1) * 10;
-            foreach (var arr in optimalPos)
+            var p = evalPoints.OrderByDescending(x => x.Eval);
+            foreach (var arr in p) 
             {
-                map[arr[0], arr[1]] = -1;
+                map[arr.Y, arr.X] = -1;
                 double value = Minimax(map, depth - 1, false, alpha, beta);
-                map[arr[0], arr[1]] = 0;
+                map[arr.Y, arr.X] = 0;
                 maxValue = Math.Max(value, maxValue);
-                if (maxValue >= beta) break;
                 alpha = Math.Max(alpha, maxValue);
+                if (maxValue >= beta) break;
                 if (possibleMaxValue == maxValue) break;
             }
        
             return maxValue;
         }
-
         // for minimalizer - player
         if (!isMaximalizer)
         {
             double maxValue = int.MaxValue;
             int possibleMaxValue = (depth - 1) * -10;
-
-            foreach (var arr in optimalPos)
+            var p = evalPoints.OrderBy(x => x.Eval);
+            foreach (var arr in p)
             {
-                map[arr[0], arr[1]] = 1;
+                map[arr.Y, arr.X] = 1;
                 double value = Minimax(map, depth - 1, true, alpha, beta);
-                map[arr[0], arr[1]] = 0;
+                map[arr.Y, arr.X] = 0;
                 maxValue = Math.Min(value, maxValue);
-                if (maxValue <= alpha) break;
                 beta = Math.Min(maxValue, beta);
+                if (maxValue <= alpha) break;
                 if (possibleMaxValue == maxValue) break;                
             }
             return maxValue;
         }
         return 0;
     }
-
 
     static bool SomethingToPlay(int[,] map)
     {
@@ -448,7 +490,11 @@ public class Program
         }
 
         double finalValue = 0;
-        foreach (var state in sortedBySize) finalValue += state.Count / (double)10;
+        foreach (var state in sortedBySize)
+        {
+            if(state.Count == 4) finalValue += state.Count / (double)7;
+            else finalValue += state.Count / (double)10;
+        }
         finalValue = isMaximalizer ? (finalValue) : -(finalValue);
         return  Math.Round(finalValue,2);
     }
@@ -459,10 +505,6 @@ public class Program
         DFSPoint start = new();
         start.X = startX;
         start.Y = startY;
-        if(startX == 3 && startY == 2)
-        {
-
-        }
 
         bool[,] notNeight = new bool[MapSize, MapSize];
         bool[,] globalVisited = new bool[MapSize, MapSize];
@@ -704,6 +746,28 @@ public class Program
         };
         eval = CalculateCurrentPosition(testMap, false);
         AreEqual(eval, -1.4);
+
+        testMap = new int[5, 5]
+        {
+            {0,0,0,0,0},
+            {1,0,-1,0,0},
+            {1,-1,-1,-1,1},
+            {0,0,-1,0,0},
+            {0,0,0,0,0}
+        };
+        eval = CalculateCurrentPosition(testMap, true);
+        AreEqual(eval, 1.4);
+
+        testMap = new int[5, 5]
+        {
+            {0,0,0,0,0},
+            {1,0,0,-1,0},
+            {1,-1,-1,-1,0},
+            {0,0,-1,0,0},
+            {0,0,0,0,0}
+        };
+        eval = CalculateCurrentPosition(testMap, true);
+        AreEqual(eval, 1.3);
     }
 
     static void AreEqual(double eval, double exepted)
@@ -728,27 +792,38 @@ public class Program
     }
 }
 
-public class DFSPoint
+public class DFSPoint : PointBase
 {
-    public int X { get; set; }
-    public int Y { get; set; }
     public DFSPoint Parent { get; set; }
 }
 
-public static class TranspositionTable
+public class PointBase
 {
-    static Hashtable transpositionTable = new Hashtable();
-    static public bool DoesPosExists(int[,] map, bool isMaximalizer, out double? storedValue)
+    public int X { get; set; }
+    public int Y { get; set; }
+}
+
+public class EvalPoint : PointBase
+{
+    public double Eval { get; set; }
+}
+static public class TranspositionTable
+{
+    static Dictionary<string, double> transpositionTable = new Dictionary<string, double>();
+    static public bool DoesPosExists(int[,] map,int depth ,bool isMaximalizer, out double? storedValue)
     {
         storedValue = null;
-        var positionString = string.Join("", map) + "|" + isMaximalizer;
-        if (!transpositionTable.Contains(positionString))
+        StringBuilder sb = new StringBuilder();
+        for (int y = 0; y < Program.MapSize; y++) for (int x = 0; x < Program.MapSize; x++) sb.Append(map[y, x]);
+        var positionString = $"{sb.ToString()}|{isMaximalizer}|{depth}";
+        if (!transpositionTable.TryGetValue(positionString, out var value))
         {
             var eval = Program.CalculateCurrentPosition(map, isMaximalizer);
             transpositionTable.Add(positionString, eval);
             return false;
         }
-        storedValue = (double)transpositionTable[positionString];
+        storedValue = value;
         return true;
     }
+    public static void ClearTable() => transpositionTable.Clear();
 }
