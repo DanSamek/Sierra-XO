@@ -1,4 +1,6 @@
-﻿namespace TicTacToeAI;
+﻿using System.Collections;
+
+namespace TicTacToeAI;
 public class Program
 {
     static int MapSize = 10;
@@ -14,9 +16,6 @@ public class Program
     // TODO 2)Multithreading +  1)TransitionTables => fast depth 5 and more
     public static void Main(string[] args)
     {
-
-        EvalutationTests();
-        return;
         TicTacToe();
     }
 
@@ -32,10 +31,13 @@ public class Program
         {
             if (playerPlays)
             {
+                Console.Clear();
                 DrawMap(map);
-                var posX = int.Parse(Console.ReadLine());
-                var posY = int.Parse(Console.ReadLine());
-                if (map[posX, posY] != 0) continue;
+                var valueX = Console.ReadLine();
+                var valueY = Console.ReadLine();
+                var posX = valueX == null ? -1 : int.Parse(valueX);
+                var posY = valueY == null ? -1 : int.Parse(valueY);
+                if (map[posX, posY] != 0 || posX == -1 || posY == -1) continue;
                 PlayerStartX = posX;
                 PlayerStartY = posY;
                 map[posX, posY] = 1;
@@ -46,11 +48,11 @@ public class Program
                 }
                 if (!SomethingToPlay(map))
                 {
+                    Console.Clear();
                     DrawMap(map);
                     Console.WriteLine("DRAW");
                     return;
                 }
-
                 playerPlays = false;
             }
             else
@@ -66,21 +68,9 @@ public class Program
                         playerPlays = true;
                         continue;
                     }
-                    /*
                     var x = PlayerStartX + random.Next(-1, 1);
                     var y = PlayerStartY + random.Next(-1, 1);
-                    */
-                    var x = 5;
-                    var y = 5;
-
-                    try
-                    {
-                        map[x, y] = -1;
-                    }
-                    catch
-                    {
-                        continue;
-                    }
+                    map[x, y] = -1;
                     AIFirstMove = false;
                     playerPlays = true;
                     continue;
@@ -94,6 +84,7 @@ public class Program
                 }
                 if (!SomethingToPlay(map))
                 {
+                    Console.Clear();
                     DrawMap(map);
                     Console.WriteLine("DRAW");
                     return;
@@ -425,7 +416,7 @@ public class Program
         return optimalPositions;
     }
 
-    static double CalculateCurrentPosition(int[,] map, bool isMaximalizer)
+    public static double CalculateCurrentPosition(int[,] map, bool isMaximalizer)
     {
         // AI = Maximalizer
         var player = isMaximalizer ? -1 : 1;
@@ -742,4 +733,22 @@ public class DFSPoint
     public int X { get; set; }
     public int Y { get; set; }
     public DFSPoint Parent { get; set; }
+}
+
+public static class TranspositionTable
+{
+    static Hashtable transpositionTable = new Hashtable();
+    static public bool DoesPosExists(int[,] map, bool isMaximalizer, out double? storedValue)
+    {
+        storedValue = null;
+        var positionString = string.Join("", map) + "|" + isMaximalizer;
+        if (!transpositionTable.Contains(positionString))
+        {
+            var eval = Program.CalculateCurrentPosition(map, isMaximalizer);
+            transpositionTable.Add(positionString, eval);
+            return false;
+        }
+        storedValue = (double)transpositionTable[positionString];
+        return true;
+    }
 }
