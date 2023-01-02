@@ -17,8 +17,6 @@ public class Program
     // TODO 2)Multithreading +  1)TransitionTables => fast depth 5 and more
     public static void Main(string[] args)
     {
-
-
         TicTacToe();
     }
 
@@ -480,11 +478,11 @@ public class Program
     {
         // AI = Maximalizer
         var player = isMaximalizer ? -1 : 1;
-        List<List<DFSPoint>> positionStates = new();
+        List<List<Point>> positionStates = new();
         for (int y = 0; y < MapSize; y++) 
             for (int x = 0; x < MapSize; x++)
                 if (map[y,x] ==  player)
-                    DFS(x, y, map, positionStates, player);
+                    BFS(x, y, map, positionStates, player);
 
         var sortedBySize = positionStates.OrderByDescending(x => x.Count).ToList();
 
@@ -506,140 +504,112 @@ public class Program
                 if (allSame) sortedBySize.Remove(itemToCheck);
             }
         }
-
         double finalValue = 0;
         var reversedPlayer = isMaximalizer ? 1 : -1;
         bool[,] globalVisited = new bool[MapSize, MapSize];
-        foreach (var state in sortedBySize)
-        {
-            finalValue += state.Count / (double)10;
-        }
+
+        foreach (var state in sortedBySize) finalValue += state.Count / (double)10;
+        
         finalValue = isMaximalizer ? (finalValue) : -(finalValue);
         return  Math.Round(finalValue,2);
     }
 
-    static void DFS(int startX, int startY, int[,] map, List<List<DFSPoint>> positionStates, int player)
+    static void BFS(int startX, int startY, int[,] map, List<List<Point>> positionStates, int player)
     {
-        Stack<DFSPoint> stack = new Stack<DFSPoint>();
-        DFSPoint start = new();
+        Queue<Point> queue = new();
+        Point start = new();
         start.X = startX;
         start.Y = startY;
+        bool[,] visited = new bool[MapSize, MapSize];
+        var neighbours = GetNeighbours(start, visited, map, player);
 
-        bool[,] notNeight = new bool[MapSize, MapSize];
-        bool[,] globalVisited = new bool[MapSize, MapSize];
-        stack.Push(start);
-        int count = 0;
-        int maxSameCount = 0;
-        while (stack.Any())
+
+        List<Point> outPoints = new();
+        if (neighbours.Count() == 0)
         {
-            var currentP = stack.Pop();
-            globalVisited[currentP.Y, currentP.X] = true;
-            var neighbours = GetNeighbours(currentP, globalVisited, map, player);
+            outPoints.Add(start);
+            positionStates.Add(outPoints);
+        }
 
-            if (!neighbours.Any()) 
+        foreach (var neighbour in neighbours) queue.Enqueue(neighbour);
+
+        while(queue.Count > 0)
+        {
+            var currPoint = queue.Dequeue();
+            visited[currPoint.Y, currPoint.X] = true;
+
+            // Nalezení dalšího bodu v cestě
+            if (currPoint.X + currPoint.DiffX >= 0 && currPoint.X + currPoint.DiffX < MapSize && currPoint.Y + currPoint.DiffY >= 0 && currPoint.Y + currPoint.Y < MapSize)
             {
-                if (notNeight[currentP.Y, currentP.X]) continue;
-                notNeight[currentP.Y, currentP.X] = true;
-                List<DFSPoint> outPoints = new();
-                var parent = currentP;
-                outPoints.Add(parent);
-                int xDiff = 0;
-                int yDiff = 0;
-
-                bool first = true;
-                if (parent.Parent == null)
+                if (map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX] == player)
                 {
-                    positionStates.Add(outPoints);
+                    queue.Enqueue(new Point()
+                    {
+                        DiffX = currPoint.DiffX,
+                        DiffY = currPoint.DiffY,
+                        Parent = currPoint,
+                        X = currPoint.X + currPoint.DiffX,
+                        Y = currPoint.Y + currPoint.DiffY
+                    });
                     continue;
                 }
-                bool toBreak = false;
-                while (parent != null)
-                {
-                    currentP = parent;
-                    parent = parent.Parent;
-
-
-                    if (first)
-                    {
-                        xDiff = parent.X - currentP.X;
-                        yDiff = parent.Y - currentP.Y;
-                    }
-                    
-                    if(parent != null && (xDiff != parent.X - currentP.X || yDiff != parent.Y - currentP.Y) && !first)
-                    {
-                        // kontrola jiného směru
-                        xDiff = parent.X - currentP.X;
-                        yDiff = parent.Y - currentP.Y;
-
-                        count = outPoints.Count;
-                        maxSameCount = 0;
-                        foreach (var ps in positionStates)
-                        {
-                            int checkCount = 0;
-                            foreach (var p in outPoints)
-                            {
-                                if (ps.Any(x => x.X == p.X && x.Y == p.Y)) checkCount++;
-                            }
-                            if (checkCount > maxSameCount) maxSameCount = checkCount;
-                            if (count == maxSameCount) 
-                            {
-                                toBreak = true;
-                                break;
-                            }
-                        }
-                        if (!toBreak)
-                        {
-                            positionStates.Add(outPoints);
-                            outPoints = new();
-                            outPoints.Add(currentP);
-                        }
-                    }
-                    if(parent != null) outPoints.Add(parent);
-                    first = false;
-                }
-                if (toBreak) continue;
-                count = outPoints.Count;
-                maxSameCount = 0;
-                foreach (var ps in positionStates)
-                {
-                    int checkCount = 0;
-                    foreach (var p in outPoints)
-                    {
-                        if (ps.Any(x => x.X == p.X && x.Y == p.Y)) checkCount++;
-                    }
-                    if (checkCount > maxSameCount) maxSameCount = checkCount;
-                    if (count == maxSameCount)
-                    {
-                        toBreak = true;
-                        break;
-                    }
-                }
-                if(!toBreak) positionStates.Add(outPoints);
             }
-            foreach (var n in neighbours) stack.Push(n);
+            // Pokud zde není uložíme cestu
+            var parent = currPoint;
+            outPoints = new();
+            if (parent.Parent == null)
+            {
+                positionStates.Add(outPoints);
+                continue;
+            }
+            while (parent != null)
+            {
+                outPoints.Add(parent);
+                parent = parent.Parent;
+            }
+
+            var count = outPoints.Count;
+            var maxSameCount = 0;
+            bool toBreak = false;
+            foreach (var ps in positionStates)
+            {
+                int checkCount = 0;
+                foreach (var p in outPoints)
+                {
+                    if (ps.Any(x => x.X == p.X && x.Y == p.Y)) checkCount++;
+                }
+                if (checkCount > maxSameCount) maxSameCount = checkCount;
+                if (count == maxSameCount)
+                {
+                    toBreak = true;
+                    break;
+                }
+            }
+            if (toBreak) continue;
+            positionStates.Add(outPoints);
         }
     }
 
-    static IEnumerable<DFSPoint> GetNeighbours(DFSPoint currentPoint, bool[,] visited, int[,] map, int player)
+    static IEnumerable<Point> GetNeighbours(Point currentPoint, bool[,] visited, int[,] map, int player)
     {
 
-        List<DFSPoint> allPoints = new List<DFSPoint>()
+        List<Point> allPoints = new List<Point>()
         {
             // X
-            new DFSPoint(){ X = currentPoint.X + 1, Y = currentPoint.Y, Parent = currentPoint},
-            new DFSPoint(){ X = currentPoint.X - 1, Y = currentPoint.Y, Parent = currentPoint},
+            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = 1},
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = -1, },
 
             //Y
-            new DFSPoint(){ X = currentPoint.X, Y = currentPoint.Y + 1, Parent = currentPoint},
-            new DFSPoint(){ X = currentPoint.X, Y = currentPoint.Y - 1, Parent = currentPoint},
+            new Point(){ X = currentPoint.X, Y = currentPoint.Y + 1, Parent = currentPoint, DiffY = 1},
+            new Point(){ X = currentPoint.X, Y = currentPoint.Y - 1, Parent = currentPoint,  DiffY = -1},
 
             // Dia
-            new DFSPoint(){ X = currentPoint.X - 1, Y = currentPoint.Y - 1, Parent = currentPoint},
-            new DFSPoint(){ X = currentPoint.X + 1, Y = currentPoint.Y + 1, Parent = currentPoint},
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = -1, DiffY = -1},
+            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = 1, DiffY = 1},
 
             // Dia
-            new DFSPoint(){ X = currentPoint.X - 1, Y = currentPoint.Y + 1, Parent = currentPoint},
-            new DFSPoint(){ X = currentPoint.X + 1, Y = currentPoint.Y - 1, Parent = currentPoint},
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = -1, DiffY = 1},
+            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = 1, DiffY = -1},
         };
         var possiblePoints = allPoints.Where(p => p.X >= 0 && p.X < MapSize && p.Y >= 0 && p.Y < MapSize && !visited[p.Y, p.X] && map[p.Y, p.X] == player).ToList();
         
@@ -876,9 +846,11 @@ public class Program
     }
 }
 
-public class DFSPoint : PointBase
+public class Point : PointBase
 {
-    public DFSPoint Parent { get; set; }
+    public Point Parent { get; set; }
+    public int DiffX { get; set; } = 0;
+    public int DiffY { get; set; } = 0;
 }
 
 public class PointBase
