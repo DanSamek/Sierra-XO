@@ -14,6 +14,12 @@ public class Game
     // TODO 2)Multithreading +  1)TransitionTables => fast depth 5 and more
     public static void Main(string[] args)
     {
+
+        Tests.EvalutationTests();
+
+        Tests.AITests();
+
+        return;
         TicTacToe();
     }
 

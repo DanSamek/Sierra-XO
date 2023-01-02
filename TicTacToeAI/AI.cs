@@ -24,6 +24,7 @@ public class AI
         {
             map[arr[0], arr[1]] = -1;
             var eval = CalculateCurrentPosition(map, true);
+            if (eval == 10) return eval;
             map[arr[0], arr[1]] = 0;
             evalPoints.Add(new EvalPoint()
             {
@@ -99,6 +100,13 @@ public class AI
             map[arr[0], arr[1]] = isMax;
             var eval = CalculateCurrentPosition(map, isMaximalizer);
             map[arr[0], arr[1]] = 0;
+            if (-isMax * 10 == -isMax * eval)
+            {
+                depth = 0;
+                return -isMax * 10;
+            }
+
+            map[arr[0], arr[1]] = 0;
             evalPoints.Add(new EvalPoint()
             {
                 Eval = eval,
@@ -114,7 +122,7 @@ public class AI
         {
             double maxValue = int.MinValue;
             int possibleMaxValue = (depth - 1) * 10;
-            var p = evalPoints.OrderByDescending(x => x.Eval);
+            var p = evalPoints.Where(p => p.Eval > avg).OrderByDescending(x => x.Eval);
             foreach (var arr in p)
             {
                 map[arr.Y, arr.X] = -1;
@@ -133,7 +141,7 @@ public class AI
         {
             double maxValue = int.MaxValue;
             int possibleMaxValue = (depth - 1) * -10;
-            var p = evalPoints.OrderBy(x => x.Eval);
+            var p = evalPoints.Where(p =>p.Eval < avg).OrderBy(x => x.Eval);
             foreach (var arr in p)
             {
                 map[arr.Y, arr.X] = 1;
@@ -291,18 +299,81 @@ public class AI
                 if (allSame) sortedBySize.Remove(itemToCheck);
             }
         }
-        double finalValue = 0;
-        var reversedPlayer = isMaximalizer ? 1 : -1;
+        double attackValue = 0;
         bool[,] globalVisited = new bool[Game.MapSize, Game.MapSize];
+        foreach (var state in sortedBySize)
+        {
+            if (state.Count == Game.WinCount - 2)
+            {
+                if (CheckEdgeNodes(state, map, 2)) 
+                    return isMaximalizer ? 10 : -10;
+            }
+            if (state.Count == Game.WinCount - 1)
+            {
+                if (CheckEdgeNodes(state, map, 1))
+                    return isMaximalizer ? 10 : -10;
+            }
+            attackValue += state.Count / (double)10;
+        }
 
-        // TODO all pos check -> how many enemy squares is defending
-        foreach (var state in sortedBySize) finalValue += state.Count / (double)10;
+        attackValue = isMaximalizer ? attackValue : -attackValue;
 
-        finalValue = isMaximalizer ? (finalValue) : -(finalValue);
+        var reversedPlayer = isMaximalizer ? 1 : -1;
+        positionStates.Clear();
+        
+        for (int y = 0; y < Game.MapSize; y++)
+            for (int x = 0; x < Game.MapSize; x++)
+                if (map[y, x] == player)
+                    BFS(x, y, map, positionStates, reversedPlayer, reversedPlayer);
+
+
+        double defendValue = 0;
+        foreach (var state in positionStates) defendValue += (state.Count-1) / (double)10;
+        defendValue = isMaximalizer ? defendValue : -defendValue;
+
+        var finalValue = defendValue + attackValue;
         return Math.Round(finalValue, 2);
     }
 
-    static void BFS(int startX, int startY, int[,] map, List<List<Point>> positionStates, int player)
+    // TODO WRONG AF!!!!
+    static bool CheckEdgeNodes(List<Point> points, int[,] map, int freeSpaceCount)
+    {
+
+        return false;
+        var last = points.Last();
+        var first = points.First();
+        bool changed = false;
+        if(last.DiffX == 0 && last.DiffY == 0)
+        {
+            last = points.First();
+            first = points.Last();
+            changed = true;
+        }
+
+        var diffXNew = (last.DiffX > 0 ? -last.DiffX : last.DiffX);
+        var diffYNew = (last.DiffY > 0 ? -last.DiffY : last.DiffY);
+
+        int firstX = first.X + (changed ? diffXNew : -diffXNew);
+        int firstY = first.Y + (changed ? diffYNew : -diffYNew);
+
+        int lastX = last.X + (changed ? diffXNew : -diffXNew);
+        int lastY = last.Y + (changed ? diffYNew : -diffYNew);
+
+        int freeSpace = 0;
+
+        if(firstX >= 0 && firstX < Game.MapSize && firstY >= 0 && firstY < Game.MapSize)
+        {
+            if (map[firstY, firstX] == 0) freeSpace += 1;
+        }
+
+        if(lastX >= 0 && lastX < Game.MapSize && lastY >= 0 && lastY < Game.MapSize)
+        {
+            if (map[lastY, lastX] == 0) freeSpace += 1;
+        }
+        return freeSpaceCount == freeSpace;
+    }
+
+    static void BFS(int startX, int startY, int[,] map, List<List<Point>> positionStates, int player, int reversedPlayer = 0)
     {
         Queue<Point> queue = new();
         Point start = new();
@@ -313,7 +384,7 @@ public class AI
 
 
         List<Point> outPoints = new();
-        if (neighbours.Count() == 0)
+        if (neighbours.Count() == 0 && reversedPlayer == 0) 
         {
             outPoints.Add(start);
             positionStates.Add(outPoints);
@@ -327,7 +398,7 @@ public class AI
             visited[currPoint.Y, currPoint.X] = true;
 
             // Nalezení dalšího bodu v cestě
-            if (currPoint.X + currPoint.DiffX >= 0 && currPoint.X + currPoint.DiffX < Game.MapSize && currPoint.Y + currPoint.DiffY >= 0 && currPoint.Y + currPoint.Y < Game.MapSize)
+            if (currPoint.X + currPoint.DiffX >= 0 && currPoint.X + currPoint.DiffX < Game.MapSize && currPoint.Y + currPoint.DiffY >= 0 && currPoint.Y + currPoint.DiffY < Game.MapSize)
             {
                 if (map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX] == player)
                 {
@@ -385,7 +456,7 @@ public class AI
         {
             // X
             new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = 1},
-            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = -1, },
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = -1},
 
             //Y
             new Point(){ X = currentPoint.X, Y = currentPoint.Y + 1, Parent = currentPoint, DiffY = 1},
