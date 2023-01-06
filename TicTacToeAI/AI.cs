@@ -225,7 +225,8 @@ public class AI
             if(state.Count == 3)
             {
                 var opened = GetOpenedSideCount(state, map);
-                if(opened == 2) enemyAttack += 10;
+                if (opened == 2) enemyAttack += 10;
+                if (opened == 1) enemyAttack += 2.5;
             }
             if (state.Count == 4)
             {
@@ -244,7 +245,7 @@ public class AI
     {
         int opened = 0;
 
-        points.RemoveRange(1, points.Count - 1);
+        points.RemoveRange(1, points.Count - 2);
         var p = points.OrderBy(x => x.X).OrderBy(x => x.Y);
 
         var lastPoint = p.ElementAt(1);
@@ -258,14 +259,14 @@ public class AI
         var lX = lastPoint.X + Math.Abs(diffX);
 
         if (lY >= 0 && lY < Game.MapSize && lX >= 0 && lX < Game.MapSize)
-            if (map[lastPoint.Y, lastPoint.X] == 0)
+            if (map[lY, lX] == 0)
                 opened++;
 
         var fY = firstPoint.Y - Math.Abs(diffY);
         var fX = firstPoint.X - Math.Abs(diffX);
 
         if (fY >= 0 && fY < Game.MapSize && fX >= 0 && fX < Game.MapSize)
-            if (map[lastPoint.Y, lastPoint.X] == 0)
+            if (map[fY, fX] == 0)
                 opened++;
 
 
