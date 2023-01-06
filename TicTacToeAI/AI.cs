@@ -107,7 +107,7 @@ public class AI
             });
         }
 
-        var avg = Math.Round(evalPoints.Average(x => x.Eval), 1);
+        var avg = Math.Round(evalPoints.Average(x => x.Eval), 2);
 
         // for maximalizer
         if (isMaximalizer)
@@ -153,110 +153,50 @@ public class AI
     static HashSet<int[]> PositionsToCheck(int[,] map)
     {
         HashSet<int[]> optimalPositions = new HashSet<int[]>();
-        // Vybírat tahy přímo připojené
-
+        // Vybírat tahy přímo připojené + 1 
         for (int y = 0; y < Game.MapSize; y++)
         {
             for (int x = 0; x < Game.MapSize; x++)
             {
                 if (map[y, x] != 0)
                 {
-                    // X
-                    //+1
-                    if (!optimalPositions.Any(arr => arr[0] == y + 1 && arr[1] == x))
-                        if (y + 1 < Game.MapSize && map[y + 1, x] == 0)
-                            optimalPositions.Add(new int[] { y + 1, x });
+                    for (int i = 1; i < 3; i++)
+                    {
+                        if (!optimalPositions.Any(arr => arr[0] == y + i && arr[1] == x))
+                            if (y + i < Game.MapSize && map[y + i, x] == 0)
+                                optimalPositions.Add(new int[] { y + i, x });
 
-                    //+2
-                    /*
-                    if (!optimalPositions.Any(arr => arr[0] == x + 2 && arr[1] == y))
-                        if (x + 2 < Game.MapSize && map[x + 2, y] == 0)
-                            optimalPositions.Add(new int[] { x + 2, y });
-                    
-                    */
-                    // +1
-                    if (!optimalPositions.Any(arr => arr[0] == y - 1 && arr[1] == x))
-                        if (y - 1 < Game.MapSize && y - 1 >= 0 && map[y - 1, x] == 0)
-                            optimalPositions.Add(new int[] { y - 1, x });
-                    /*
-                    // +2
-                    
-                    if (!optimalPositions.Any(arr => arr[0] == x - 2 && arr[1] == y))
-                        if (x - 2 < Game.MapSize && x - 2 >= 0 && map[x - 2, y] == 0)
-                            optimalPositions.Add(new int[] { x - 2, y });
-                    */
-                    // Y
-                    // +1
-                    if (!optimalPositions.Any(arr => arr[0] == y && arr[1] == x + 1))
-                        if (x + 1 < Game.MapSize && map[y, x + 1] == 0)
-                            optimalPositions.Add(new int[] { y, x + 1 });
+                        if (!optimalPositions.Any(arr => arr[0] == y - i && arr[1] == x))
+                            if (y - i < Game.MapSize && y - i >= 0 && map[y - i, x] == 0)
+                                optimalPositions.Add(new int[] { y - i, x });
 
-                    /*
-                    if (!optimalPositions.Any(arr => arr[0] == x && arr[1] == y + 2))
-                        if (y + 2 < Game.MapSize && map[x, y + 2] == 0)
-                            optimalPositions.Add(new int[] { x, y + 2 });
+                        if (!optimalPositions.Any(arr => arr[0] == y && arr[1] == x + i))
+                            if (x + i < Game.MapSize && map[y, x + i] == 0)
+                                optimalPositions.Add(new int[] { y, x + i });
 
-                    */
-                    //+1
-                    if (!optimalPositions.Any(arr => arr[0] == y && arr[1] == x - 1))
-                        if (x - 1 < Game.MapSize && x - 1 >= 0 && map[y, x - 1] == 0)
-                            optimalPositions.Add(new int[] { y, x - 1 });
+                        if (!optimalPositions.Any(arr => arr[0] == y && arr[1] == x - i))
+                            if (x - i < Game.MapSize && x - i >= 0 && map[y, x - i] == 0)
+                                optimalPositions.Add(new int[] { y, x - i });
 
-                    /*
-                    // +2
-                    if (!optimalPositions.Any(arr => arr[0] == x && arr[1] == y - 2))
-                        if (y - 2 < Game.MapSize && y - 2 >= 0 && map[x, y - 2] == 0)
-                            optimalPositions.Add(new int[] { x, y - 2 });
-                    */
+                        if (!optimalPositions.Any(arr => arr[0] == y - i && arr[1] == x - i))
+                            if (x - i >= 0 && y - i >= 0 && map[y - i, x - i] == 0)
+                                optimalPositions.Add(new int[] { y - i, x - i });
 
-                    //DIAGONAL
-                    if (!optimalPositions.Any(arr => arr[0] == y - 1 && arr[1] == x - 1))
-                        if (x - 1 >= 0 && y - 1 >= 0 && map[y - 1, x - 1] == 0)
-                            optimalPositions.Add(new int[] { y - 1, x - 1 });
+                        if (!optimalPositions.Any(arr => arr[0] == y + i && arr[1] == x + i))
+                            if (x + i < Game.MapSize && y + i < Game.MapSize && map[y + i, x + i] == 0)
+                                optimalPositions.Add(new int[] { y + i, x + i });
 
-                    /*
-                    if (!optimalPositions.Any(arr => arr[0] == x - 2 && arr[1] == y - 2))
-                        if (x - 2 >= 0 && y - 2 >= 0 && map[x - 2, y - 2] == 0)
-                            optimalPositions.Add(new int[] { x - 2, y - 2 });
+                        if (!optimalPositions.Any(arr => arr[0] == y - i && arr[1] == x + i))
+                            if (y - i >= 0 && x + i < Game.MapSize && map[y - i, x + i] == 0)
+                                optimalPositions.Add(new int[] { y - i, x + i });
 
-                    */
-
-                    // +1
-                    if (!optimalPositions.Any(arr => arr[0] == y + 1 && arr[1] == x + 1))
-                        if (x + 1 < Game.MapSize && y + 1 < Game.MapSize && map[y + 1, x + 1] == 0)
-                            optimalPositions.Add(new int[] { y + 1, x + 1 });
-
-                    /*
-                    // +2
-                    if (!optimalPositions.Any(arr => arr[0] == x + 2 && arr[1] == y + 2))
-                        if (x + 2 < Game.MapSize && y + 2 < Game.MapSize && map[x + 2, y + 2] == 0)
-                            optimalPositions.Add(new int[] { x + 2, y + 2 });
-                    */
-
-                    //+1
-                    if (!optimalPositions.Any(arr => arr[0] == y - 1 && arr[1] == x + 1))
-                        if (y - 1 >= 0 && x + 1 < Game.MapSize && map[y - 1, x + 1] == 0)
-                            optimalPositions.Add(new int[] { y - 1, x + 1 });
-                    /*
-                    //+2
-                    if (!optimalPositions.Any(arr => arr[0] == x - 2 && arr[1] == y + 2))
-                        if (x - 2 >= 0 && y + 2 < Game.MapSize && map[x - 2, y + 2] == 0)
-                            optimalPositions.Add(new int[] { x - 2, y + 2 });
-                    */
-                    // +1
-                    if (!optimalPositions.Any(arr => arr[0] == y + 1 && arr[1] == x - 1))
-                        if (y + 1 < Game.MapSize && x - 1 >= 0 && map[y + 1, x - 1] == 0)
-                            optimalPositions.Add(new int[] { y + 1, x - 1 });
-                    // +2
-                    /*
-                    if (!optimalPositions.Any(arr => arr[0] == x + 2 && arr[1] == y - 2))
-                        if (x + 2 < Game.MapSize && y - 2 >= 0 && map[x + 2, y - 2] == 0)
-                            optimalPositions.Add(new int[] { x + 2, y - 2 });
-                    */
+                        if (!optimalPositions.Any(arr => arr[0] == y + i && arr[1] == x - i))
+                            if (y + i < Game.MapSize && x - i >= 0 && map[y + i, x - i] == 0)
+                                optimalPositions.Add(new int[] { y + i, x - i });
+                    }  
                 }
             }
         }
-
         return optimalPositions;
     }
 
@@ -266,13 +206,9 @@ public class AI
         // AI = Maximalizer
         var player = isMaximalizer ? -1 : 1;
         List<List<Point>> positionStates = new();
-        for (int y = 0; y < Game.MapSize; y++)
-            for (int x = 0; x < Game.MapSize; x++)
-                if (map[y, x] == player)
-                    BFS(x, y, map, positionStates, player);
+        for (int y = 0; y < Game.MapSize; y++) for (int x = 0; x < Game.MapSize; x++) if (map[y, x] == player) BFS(x, y, map, positionStates, player);
 
         var sortedBySize = positionStates.OrderByDescending(x => x.Count).ToList();
-
         for (int i = 0; i < sortedBySize.Count; i++)
         {
             foreach (var itemToCheck in sortedBySize.ToList())
@@ -295,7 +231,6 @@ public class AI
         var reversedPlayer = isMaximalizer ? 1 : -1;
         bool[,] globalVisited = new bool[Game.MapSize, Game.MapSize];
 
-        // TODO all pos check -> how many enemy squares is defending
         foreach (var state in sortedBySize) finalValue += state.Count / (double)10;
 
         finalValue = isMaximalizer ? (finalValue) : -(finalValue);
