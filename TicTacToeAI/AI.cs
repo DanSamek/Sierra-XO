@@ -84,13 +84,14 @@ public class AI
             int outValue = player == 1 ? -10 : 10;
             return outValue * depth;
         }
-
         if (depth == 0)
         {
             var outValue = CalculateCurrentPosition(map, isMaximalizer);
             return outValue;
         }
+
         if (!Game.SomethingToPlay(map)) return 0;
+
         var optimalPos = PositionsToCheck(map);
         List<EvalPoint> evalPoints = new();
         foreach (var arr in optimalPos)
@@ -113,8 +114,8 @@ public class AI
         if (isMaximalizer)
         {
             double maxValue = int.MinValue;
-            int possibleMaxValue = (depth - 1) * 10;
-            var p = evalPoints.OrderByDescending(x => x.Eval);
+            int possibleMaxValue = depth == 1 ? 10 : (depth - 1) * 10;
+            var p = evalPoints.Where(x => x.Eval > avg).OrderByDescending(x => x.Eval);
             foreach (var arr in p)
             {
                 map[arr.Y, arr.X] = -1;
@@ -132,8 +133,8 @@ public class AI
         if (!isMaximalizer)
         {
             double maxValue = int.MaxValue;
-            int possibleMaxValue = (depth - 1) * -10;
-            var p = evalPoints.OrderBy(x => x.Eval);
+            int possibleMaxValue = depth == 1 ? -10 : (depth -1) * -10;
+            var p = evalPoints.Where(x => x.Eval < avg ).OrderBy(x => x.Eval);
             foreach (var arr in p)
             {
                 map[arr.Y, arr.X] = 1;
@@ -160,7 +161,7 @@ public class AI
             {
                 if (map[y, x] != 0)
                 {
-                    for (int i = 1; i < 3; i++)
+                    for (int i = 1; i < 2; i++)
                     {
                         if (!optimalPositions.Any(arr => arr[0] == y + i && arr[1] == x))
                             if (y + i < Game.MapSize && map[y + i, x] == 0)
@@ -200,14 +201,80 @@ public class AI
         return optimalPositions;
     }
 
-
     public static double CalculateCurrentPosition(int[,] map, bool isMaximalizer)
     {
         // AI = Maximalizer
         var player = isMaximalizer ? -1 : 1;
+        double ourAttack = 0;
+        double enemyAttack = 0;
         List<List<Point>> positionStates = new();
+
         for (int y = 0; y < Game.MapSize; y++) for (int x = 0; x < Game.MapSize; x++) if (map[y, x] == player) BFS(x, y, map, positionStates, player);
 
+        var values = RemoveSmallerDuplicates(positionStates);
+        foreach (var state in values) ourAttack += state.Count / (double)10;
+
+        positionStates.Clear();
+
+        var reversedPlayer = isMaximalizer ? 1 : -1;
+        for (int y = 0; y < Game.MapSize; y++) for (int x = 0; x < Game.MapSize; x++) if (map[y, x] == reversedPlayer) BFS(x, y, map, positionStates, reversedPlayer);
+        
+        values = RemoveSmallerDuplicates(positionStates);
+        foreach (var state in values)
+        {
+            if(state.Count == 3)
+            {
+                var opened = GetOpenedSideCount(state, map);
+                if(opened == 2) enemyAttack += 10;
+            }
+            if (state.Count == 4)
+            {
+                var opened = GetOpenedSideCount(state, map);
+                if (opened == 1) enemyAttack += 10;                
+            }
+            enemyAttack += state.Count / (double)10;
+        }
+
+        var finalValue = ourAttack - enemyAttack;
+        return Math.Round(finalValue, 2);
+    }
+
+
+    static int GetOpenedSideCount(List<Point> points, int[,] map)
+    {
+        int opened = 0;
+
+        points.RemoveRange(1, points.Count - 1);
+        var p = points.OrderBy(x => x.X).OrderBy(x => x.Y);
+
+        var lastPoint = p.ElementAt(1);
+        var firstPoint = p.ElementAt(0);
+
+        var diffX = lastPoint.DiffX == 0 ? firstPoint.DiffX : lastPoint.DiffX;
+        var diffY = lastPoint.DiffY == 0 ? firstPoint.DiffY : lastPoint.DiffY;
+
+            
+        var lY = lastPoint.Y + Math.Abs(diffY);
+        var lX = lastPoint.X + Math.Abs(diffX);
+
+        if (lY >= 0 && lY < Game.MapSize && lX >= 0 && lX < Game.MapSize)
+            if (map[lastPoint.Y, lastPoint.X] == 0)
+                opened++;
+
+        var fY = firstPoint.Y - Math.Abs(diffY);
+        var fX = firstPoint.X - Math.Abs(diffX);
+
+        if (fY >= 0 && fY < Game.MapSize && fX >= 0 && fX < Game.MapSize)
+            if (map[lastPoint.Y, lastPoint.X] == 0)
+                opened++;
+
+
+        return opened;
+    }
+
+
+    static List<List<Point>> RemoveSmallerDuplicates(List<List<Point>> positionStates)
+    {
         var sortedBySize = positionStates.OrderByDescending(x => x.Count).ToList();
         for (int i = 0; i < sortedBySize.Count; i++)
         {
@@ -227,14 +294,7 @@ public class AI
                 if (allSame) sortedBySize.Remove(itemToCheck);
             }
         }
-        double finalValue = 0;
-        var reversedPlayer = isMaximalizer ? 1 : -1;
-        bool[,] globalVisited = new bool[Game.MapSize, Game.MapSize];
-
-        foreach (var state in sortedBySize) finalValue += state.Count / (double)10;
-
-        finalValue = isMaximalizer ? (finalValue) : -(finalValue);
-        return Math.Round(finalValue, 2);
+        return sortedBySize;
     }
 
     static void BFS(int startX, int startY, int[,] map, List<List<Point>> positionStates, int player)
@@ -245,7 +305,6 @@ public class AI
         start.Y = startY;
         bool[,] visited = new bool[Game.MapSize, Game.MapSize];
         var neighbours = GetNeighbours(start, visited, map, player);
-
 
         List<Point> outPoints = new();
         if (neighbours.Count() == 0)
@@ -272,7 +331,7 @@ public class AI
                         DiffY = currPoint.DiffY,
                         Parent = currPoint,
                         X = currPoint.X + currPoint.DiffX,
-                        Y = currPoint.Y + currPoint.DiffY
+                        Y = currPoint.Y + currPoint.DiffY,
                     });
                     continue;
                 }
@@ -315,12 +374,11 @@ public class AI
 
     static IEnumerable<Point> GetNeighbours(Point currentPoint, bool[,] visited, int[,] map, int player)
     {
-
         List<Point> allPoints = new List<Point>()
         {
             // X
             new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = 1},
-            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = -1, },
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = -1},
 
             //Y
             new Point(){ X = currentPoint.X, Y = currentPoint.Y + 1, Parent = currentPoint, DiffY = 1},
