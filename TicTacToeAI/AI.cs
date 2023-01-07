@@ -5,6 +5,7 @@ namespace TicTacToeAI;
 public class AI
 {
     public static int Depth = 5;
+    public static int positionEvaluated = 0;
     public static double GetAIMove(int[,] map)
     {
         // AI is maximalizer
@@ -32,29 +33,9 @@ public class AI
                 Y = arr[0]
             });
         }
-        var max = evalPoints.Max(x => x.Eval);
 
-        var orderedPos = evalPoints.Where(x => x.Eval == max).ToList();
-        // Kontrola výhry
-        foreach (var arr in optimalPos)
-        {
-            map[arr[0], arr[1]] = -1;
-            var value = Minimax(map, 1, false, alpha, beta);
-            map[arr[0], arr[1]] = 0;
-            if (value > maxValue)
-            {
-                maxValue = value;
-                bestX = arr[0];
-                bestY = arr[1];
-                if (maxValue >= 10)
-                {
-                    map[bestX, bestY] = -1;
-                    return maxValue;
-                }
-            }
-        }
         maxValue = int.MinValue;
-        foreach (var arr in orderedPos)
+        foreach (var arr in evalPoints)
         {
             map[arr.Y, arr.X] = -1;
             var value = Minimax(map, Depth, false, alpha, beta);
@@ -64,25 +45,28 @@ public class AI
                 maxValue = value;
                 bestX = arr.Y;
                 bestY = arr.X;
-                if (maxValue >= 10) break;
             }
         }
 
         stopwatch.Stop();
         Console.WriteLine($"{stopwatch.ElapsedMilliseconds} ms");
         Console.WriteLine($"{stopwatch.ElapsedMilliseconds / (double)1000} s");
+        Console.WriteLine($"Moves evaulated {positionEvaluated}");
         map[bestX, bestY] = -1;
+        Console.WriteLine($"Y = {bestX}, X = {bestY}");
         TranspositionTable.ClearTable();
+        positionEvaluated = 0;
         return maxValue;
     }
 
     static double Minimax(int[,] map, int depth, bool isMaximalizer, double alpha, double beta)
     {
+        positionEvaluated++;
         if (TranspositionTable.DoesPosExists(map, depth, isMaximalizer, out double? storedValue)) return storedValue.Value;
 
         if (Game.CheckWin(map, out int player))
         {
-            int outValue = player == 1 ? -10 : 10;
+            int outValue = player == 1 ? -10000 : 10000;
             return outValue * depth;
         }
         if (depth == 0)
@@ -95,6 +79,7 @@ public class AI
 
         var optimalPos = PositionsToCheck(map);
         List<EvalPoint> evalPoints = new();
+
         foreach (var arr in optimalPos)
         {
             var isMax = isMaximalizer ? -1 : 1;
@@ -116,32 +101,29 @@ public class AI
         {
             var max = evalPoints.Max(x => x.Eval);
             double maxValue = int.MinValue;
-            int possibleMaxValue = depth == 1 ? 10 : (depth - 1) * 10;
-            var p = evalPoints.Where(x => x.Eval > avg).OrderByDescending(x => x.Eval);
+            int possibleMaxValue = depth == 1 ? 10000 : (depth - 1) * 10000;
+            var p = evalPoints.Where(x => x.Eval >= avg).OrderBy(x => x.Eval);
             foreach (var arr in p)
             {
                 map[arr.Y, arr.X] = -1;
                 double value = Minimax(map, depth - 1, false, alpha, beta);
                 map[arr.Y, arr.X] = 0;
                 maxValue = Math.Max(value, maxValue);
-                alpha = Math.Max(alpha, maxValue);
-
-                if (beta <= alpha) break;
+                if (maxValue > beta) break;
 
                 if (possibleMaxValue == maxValue) break;
+                alpha = Math.Max(alpha, maxValue);
             }
-
             return maxValue;
         }
 
         // for minimalizer - player
         if (!isMaximalizer)
         {
-
             var min = (double)evalPoints.Min(x => x.Eval);
             double maxValue = int.MaxValue;
-            int possibleMaxValue = depth == 1 ? -10 : (depth -1) * -10;
-            var p = evalPoints.Where(x => x.Eval < avg ).OrderBy(x => x.Eval);
+            int possibleMaxValue = depth == 1 ? -10000 : (depth -1) * -10000;
+            var p = evalPoints.Where(x => x.Eval <= avg).OrderByDescending(x => x.Eval);
             foreach (var arr in p)
             {
                 map[arr.Y, arr.X] = 1;
@@ -149,21 +131,20 @@ public class AI
                 map[arr.Y, arr.X] = 0;
 
                 maxValue = Math.Min(value, maxValue);
-                beta = Math.Min(maxValue, beta);
 
-                if (beta <= alpha) break;
+                if (maxValue < alpha) break;
                 if (possibleMaxValue == maxValue) break;
+                beta = Math.Min(maxValue, beta);
             }
             return maxValue;
         }
         return 0;
     }
 
-
     static HashSet<int[]> PositionsToCheck(int[,] map)
     {
         HashSet<int[]> optimalPositions = new HashSet<int[]>();
-        // Vybírat tahy přímo připojené + 1 
+
         for (int y = 0; y < Game.MapSize; y++)
         {
             for (int x = 0; x < Game.MapSize; x++)
@@ -212,12 +193,11 @@ public class AI
 
     public static double CalculateCurrentPosition(int[,] map, bool isMaximalizer)
     {
-        // AI = Maximalizer
         var player = isMaximalizer ? -1 : 1;
         double myAttack = 0;
         double enemyAttack = 0;
         List<List<Point>> positionStates = new();
-        
+
         var reversedPlayer = isMaximalizer ? 1 : -1;
         for (int y = 0; y < Game.MapSize; y++) for (int x = 0; x < Game.MapSize; x++) if (map[y, x] == reversedPlayer) BFS(x, y, map, positionStates, reversedPlayer);
         
@@ -242,8 +222,10 @@ public class AI
             myAttack += attack;
         }
 
+        enemyAttack = isMaximalizer? -enemyAttack : enemyAttack;
         myAttack = isMaximalizer ? myAttack : -myAttack;
-        var evaluatedValue = isMaximalizer ? myAttack - enemyAttack : myAttack + enemyAttack;
+
+        var evaluatedValue = myAttack + enemyAttack;
 
         return Math.Round(evaluatedValue, 2);
     }
@@ -258,20 +240,21 @@ public class AI
             {
                 if (mustDefend)
                 {
-                    attackValue += 8;
-                    return false;
+                    attackValue += 800;
+                    return true;
                 }
-                attackValue += 10;
+                attackValue += 10000;
                 return true;
             }
             if (opened == 1)
             {
                 if (mustDefend)
                 {
-                    attackValue += 1.5;
-                    return false;
+                    attackValue += 400;
+                    return true;
                 }
-                attackValue += 2.5;
+                attackValue += 2500;
+                return true;
             }
         }
         if (Game.WinCount - 1 == state.Count)
@@ -281,17 +264,29 @@ public class AI
             {
                 if (mustDefend)
                 {
-                    attackValue += 8;
-                    return false;
+                    attackValue += 100;
+                    return true;
                 }
-                attackValue += 10;
+                attackValue += 7500;
+                return true;
+            }
+            if (opened == 2)
+            {
+                if (mustDefend)
+                {
+                    attackValue += 2500;
+                    return true;
+                }
+                attackValue += 10000;
                 return true;
             }
         }
-        attackValue += state.Count / (double)10;
+        attackValue += state.Count * 10;
         return false;
     }
 
+    // Still wrong DDDD:
+    // IF this will be ok, we are done :D
     static int GetOpenedSideCount(List<Point> points, int[,] map)
     {
         int opened = 0;
@@ -305,21 +300,15 @@ public class AI
         var diffX = lastPoint.DiffX == 0 ? firstPoint.DiffX : lastPoint.DiffX;
         var diffY = lastPoint.DiffY == 0 ? firstPoint.DiffY : lastPoint.DiffY;
 
-            
-        var lY = lastPoint.Y + Math.Abs(diffY);
-        var lX = lastPoint.X + Math.Abs(diffX);
+        var lY = lastPoint.Y + diffY;
+        var lX = lastPoint.X + diffX;
 
         if (lY >= 0 && lY < Game.MapSize && lX >= 0 && lX < Game.MapSize) if (map[lY, lX] == 0) opened++;
 
-        var fY = firstPoint.Y - Math.Abs(diffY);
-        var fX = firstPoint.X - Math.Abs(diffX);
+        var fY = firstPoint.Y - diffY;
+        var fX = firstPoint.X + Math.Abs(diffX);
 
         if (fY >= 0 && fY < Game.MapSize && fX >= 0 && fX < Game.MapSize) if (map[fY, fX] == 0) opened++;
-
-        // Pokud to bude u kraje
-        if(fY == 0 || fY == Game.MapSize - 1 || fX == 0 || fX == Game.MapSize - 1) opened -= 1;
-        if(lY == 0 || lY == Game.MapSize - 1 || lX == 0 || lX == Game.MapSize - 1) opened -= 1;
-
         return opened;
     }
 

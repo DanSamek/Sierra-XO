@@ -175,11 +175,12 @@ public static class Tests
             {0,0,-1,0,0},
             {0,0,-1,0,0}
         };
+        Game.Depth = 9;
         Game.MapSize = 5;
         Game.WinCount = 4;
         var eval = AI.GetAIMove(testMap);
         Game.DrawMap(testMap);
-        AreEqual(eval, 10);
+        AreEqual(eval, 5000);
 
 
         testMap = new int[5, 5]
@@ -190,27 +191,26 @@ public static class Tests
             {0,-1,-1,-1,0},
             {0,0,-1,0,0}
         };
-        Game.Depth = 5;
         eval = AI.GetAIMove(testMap);
         Game.DrawMap(testMap);
-        AreEqual(eval, 10);
+        AreEqual(eval, 5000);
+        Game.WinCount = 5;
 
         testMap = new int[7, 7]
         {
             {0,0,0,0,0,0,0},
-            {0,0,0,0,0,0,0},
-            {0,0,0,0,0,0,0},
+            {0,-1,0,0,0,0,0},
+            {0,1,1,0,0,0,0},
             {0,-1,-1,-1,1,0,0},
-            {0,0,0,0,0,0,0},
+            {0,-1,0,0,0,0,0},
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0}
         };
-        Game.Depth = 5;
+        Game.Depth = 9;
         Game.MapSize = 7;
         eval = AI.GetAIMove(testMap);
         Game.DrawMap(testMap);
         AreEqual(eval, 30);
-
         testMap = new int[7, 7]
         {
             {0,0,0,0,0,0,0},
@@ -223,8 +223,25 @@ public static class Tests
         };
         
         Game.WinCount = 5;
-        Game.Depth = 5;
         Game.MapSize = 7;
+        eval = AI.GetAIMove(testMap);
+        Game.DrawMap(testMap);
+        AreEqual(eval, -21.8);
+        Game.MapSize = 10;
+        Game.WinCount = 5;
+        testMap = new int[10, 10]
+        {
+            {0,0,0,0,0,0,0,0,0,0,},
+            {0,0,0,0,0,0,0,0,0,0,},
+            {0,0,0,0,0,0,-1,0,0,0,},
+            {0,0,0,1,0,0,1,0,0,0,},
+            {0,0,0,-1,-1,1,0,0,0,0,},
+            {0,0,0,1,1,-1,0,0,0,0,},
+            {0,0,0,0,0,0,0,0,0,0,},
+            {0,0,0,0,0,0,0,0,0,0,},
+            {0,0,0,0,0,0,0,0,0,0,},
+            {0,0,0,0,0,0,0,0,0,0,},
+        };
         eval = AI.GetAIMove(testMap);
         Game.DrawMap(testMap);
         AreEqual(eval, -21.8);
