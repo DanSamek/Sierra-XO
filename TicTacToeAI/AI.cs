@@ -32,7 +32,9 @@ public class AI
                 Y = arr[0]
             });
         }
-        var orderedPos = evalPoints.OrderByDescending(x => x.Eval).ToList();
+        var max = evalPoints.Max(x => x.Eval);
+
+        var orderedPos = evalPoints.Where(x => x.Eval == max).ToList();
         // Kontrola výhry
         foreach (var arr in optimalPos)
         {
@@ -67,7 +69,6 @@ public class AI
         }
 
         stopwatch.Stop();
-        // NO - 4,732 s
         Console.WriteLine($"{stopwatch.ElapsedMilliseconds} ms");
         Console.WriteLine($"{stopwatch.ElapsedMilliseconds / (double)1000} s");
         map[bestX, bestY] = -1;
@@ -113,6 +114,7 @@ public class AI
         // for maximalizer
         if (isMaximalizer)
         {
+            var max = evalPoints.Max(x => x.Eval);
             double maxValue = int.MinValue;
             int possibleMaxValue = depth == 1 ? 10 : (depth - 1) * 10;
             var p = evalPoints.Where(x => x.Eval > avg).OrderByDescending(x => x.Eval);
@@ -123,15 +125,20 @@ public class AI
                 map[arr.Y, arr.X] = 0;
                 maxValue = Math.Max(value, maxValue);
                 alpha = Math.Max(alpha, maxValue);
-                if (maxValue >= beta) break;
+
+                if (beta <= alpha) break;
+
                 if (possibleMaxValue == maxValue) break;
             }
 
             return maxValue;
         }
+
         // for minimalizer - player
         if (!isMaximalizer)
         {
+
+            var min = (double)evalPoints.Min(x => x.Eval);
             double maxValue = int.MaxValue;
             int possibleMaxValue = depth == 1 ? -10 : (depth -1) * -10;
             var p = evalPoints.Where(x => x.Eval < avg ).OrderBy(x => x.Eval);
@@ -140,9 +147,11 @@ public class AI
                 map[arr.Y, arr.X] = 1;
                 double value = Minimax(map, depth - 1, true, alpha, beta);
                 map[arr.Y, arr.X] = 0;
+
                 maxValue = Math.Min(value, maxValue);
                 beta = Math.Min(maxValue, beta);
-                if (maxValue <= alpha) break;
+
+                if (beta <= alpha) break;
                 if (possibleMaxValue == maxValue) break;
             }
             return maxValue;
@@ -205,48 +214,90 @@ public class AI
     {
         // AI = Maximalizer
         var player = isMaximalizer ? -1 : 1;
-        double ourAttack = 0;
+        double myAttack = 0;
         double enemyAttack = 0;
         List<List<Point>> positionStates = new();
-
-        for (int y = 0; y < Game.MapSize; y++) for (int x = 0; x < Game.MapSize; x++) if (map[y, x] == player) BFS(x, y, map, positionStates, player);
-
-        var values = RemoveSmallerDuplicates(positionStates);
-        foreach (var state in values) ourAttack += state.Count / (double)10;
-
-        positionStates.Clear();
-
+        
         var reversedPlayer = isMaximalizer ? 1 : -1;
         for (int y = 0; y < Game.MapSize; y++) for (int x = 0; x < Game.MapSize; x++) if (map[y, x] == reversedPlayer) BFS(x, y, map, positionStates, reversedPlayer);
         
-        values = RemoveSmallerDuplicates(positionStates);
+        var values = RemoveSmallerDuplicates(positionStates);
+        bool mustDefend = false;
+
         foreach (var state in values)
         {
-            if(state.Count == 3)
-            {
-                var opened = GetOpenedSideCount(state, map);
-                if (opened == 2) enemyAttack += 10;
-                if (opened == 1) enemyAttack += 2.5;
-            }
-            if (state.Count == 4)
-            {
-                var opened = GetOpenedSideCount(state, map);
-                if (opened == 1) enemyAttack += 10;                
-            }
-            enemyAttack += state.Count / (double)10;
+            if (GetValueForCurrentState(state, map, out var attack)) mustDefend = true;
+            enemyAttack += attack;
+        }
+ 
+        positionStates.Clear();
+        for (int y = 0; y < Game.MapSize; y++) for (int x = 0; x < Game.MapSize; x++) if (map[y, x] == player) BFS(x, y, map, positionStates, player);
+
+        values.Clear();
+        values = RemoveSmallerDuplicates(positionStates);
+
+        foreach (var state in values)
+        {
+            GetValueForCurrentState(state, map, out var attack, mustDefend);
+            myAttack += attack;
         }
 
-        var finalValue = ourAttack - enemyAttack;
-        return Math.Round(finalValue, 2);
+        myAttack = isMaximalizer ? myAttack : -myAttack;
+        var evaluatedValue = isMaximalizer ? myAttack - enemyAttack : myAttack + enemyAttack;
+
+        return Math.Round(evaluatedValue, 2);
     }
 
+    public static bool GetValueForCurrentState(List<Point> state, int[,] map, out double attackValue, bool mustDefend = false)
+    {
+        attackValue = 0;
+        if (Game.WinCount - 2 == state.Count)
+        {
+            var opened = GetOpenedSideCount(state, map);
+            if (opened == 2)
+            {
+                if (mustDefend)
+                {
+                    attackValue += 8;
+                    return false;
+                }
+                attackValue += 10;
+                return true;
+            }
+            if (opened == 1)
+            {
+                if (mustDefend)
+                {
+                    attackValue += 1.5;
+                    return false;
+                }
+                attackValue += 2.5;
+            }
+        }
+        if (Game.WinCount - 1 == state.Count)
+        {
+            var opened = GetOpenedSideCount(state, map);
+            if (opened == 1)
+            {
+                if (mustDefend)
+                {
+                    attackValue += 8;
+                    return false;
+                }
+                attackValue += 10;
+                return true;
+            }
+        }
+        attackValue += state.Count / (double)10;
+        return false;
+    }
 
     static int GetOpenedSideCount(List<Point> points, int[,] map)
     {
         int opened = 0;
-
-        points.RemoveRange(1, points.Count - 2);
-        var p = points.OrderBy(x => x.X).OrderBy(x => x.Y);
+        var copyPoints = new List<Point>(points);
+        copyPoints.RemoveRange(1, points.Count - 2);
+        var p = copyPoints.OrderBy(x => x.X).OrderBy(x => x.Y);
 
         var lastPoint = p.ElementAt(1);
         var firstPoint = p.ElementAt(0);
@@ -258,21 +309,19 @@ public class AI
         var lY = lastPoint.Y + Math.Abs(diffY);
         var lX = lastPoint.X + Math.Abs(diffX);
 
-        if (lY >= 0 && lY < Game.MapSize && lX >= 0 && lX < Game.MapSize)
-            if (map[lY, lX] == 0)
-                opened++;
+        if (lY >= 0 && lY < Game.MapSize && lX >= 0 && lX < Game.MapSize) if (map[lY, lX] == 0) opened++;
 
         var fY = firstPoint.Y - Math.Abs(diffY);
         var fX = firstPoint.X - Math.Abs(diffX);
 
-        if (fY >= 0 && fY < Game.MapSize && fX >= 0 && fX < Game.MapSize)
-            if (map[fY, fX] == 0)
-                opened++;
+        if (fY >= 0 && fY < Game.MapSize && fX >= 0 && fX < Game.MapSize) if (map[fY, fX] == 0) opened++;
 
+        // Pokud to bude u kraje
+        if(fY == 0 || fY == Game.MapSize - 1 || fX == 0 || fX == Game.MapSize - 1) opened -= 1;
+        if(lY == 0 || lY == Game.MapSize - 1 || lX == 0 || lX == Game.MapSize - 1) opened -= 1;
 
         return opened;
     }
-
 
     static List<List<Point>> RemoveSmallerDuplicates(List<List<Point>> positionStates)
     {

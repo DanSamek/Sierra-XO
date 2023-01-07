@@ -47,6 +47,7 @@ public static class Tests
             { 0,0,0,0,0 },
             { 0,0,0,0,0 }
         };
+        Game.WinCount = 5;
         eval = AI.CalculateCurrentPosition(testMap, true);
         AreEqual(eval, 0.3);
 
@@ -86,7 +87,6 @@ public static class Tests
         AreEqual(eval, 0.5);
 
 
-
         testMap = new int[5, 5]
         {
             { 0,0,0,0,0 },
@@ -96,7 +96,7 @@ public static class Tests
             { 0,0,0,0,0 }
         };
         eval = AI.CalculateCurrentPosition(testMap, true);
-        AreEqual(eval, 0.5);
+        AreEqual(eval, 0.2);
 
         testMap = new int[5, 5]
         {
@@ -107,7 +107,7 @@ public static class Tests
             {0,0,0,0,0}
         };
         eval = AI.CalculateCurrentPosition(testMap, false);
-        AreEqual(eval, -0.9);
+        AreEqual(eval, -0.6);
 
 
         testMap = new int[5, 5]
@@ -119,7 +119,7 @@ public static class Tests
             {0,0,0,0,0}
         };
         eval = AI.CalculateCurrentPosition(testMap, false);
-        AreEqual(eval, -1.4);
+        AreEqual(eval, -1.1);
 
         testMap = new int[5, 5]
         {
@@ -130,7 +130,7 @@ public static class Tests
             {0,0,0,0,0}
         };
         eval = AI.CalculateCurrentPosition(testMap, true);
-        AreEqual(eval, 1.4);
+        AreEqual(eval, 1.1);
 
         testMap = new int[5, 5]
         {
@@ -141,7 +141,7 @@ public static class Tests
             {0,0,0,0,0}
         };
         eval = AI.CalculateCurrentPosition(testMap, true);
-        AreEqual(eval, 1.3);
+        AreEqual(eval, 1.3 - 0.2);
     }
 
     static void AreEqual(double eval, double exepted)
@@ -176,6 +176,7 @@ public static class Tests
             {0,0,-1,0,0}
         };
         Game.MapSize = 5;
+        Game.WinCount = 4;
         var eval = AI.GetAIMove(testMap);
         Game.DrawMap(testMap);
         AreEqual(eval, 10);
@@ -184,7 +185,7 @@ public static class Tests
         testMap = new int[5, 5]
         {
             {0,0,0,0,0},
-            {1,0,0,0,0},
+            {0,0,0,0,0},
             {0,0,-1,0,0},
             {0,-1,-1,-1,0},
             {0,0,-1,0,0}
@@ -194,14 +195,13 @@ public static class Tests
         Game.DrawMap(testMap);
         AreEqual(eval, 10);
 
-
         testMap = new int[7, 7]
         {
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0},
-            {0,0,-1,-1,0,0,0},
-            {0,0,-1,0,-1,0,0},
+            {0,-1,-1,-1,1,0,0},
+            {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0}
         };
@@ -215,11 +215,11 @@ public static class Tests
         {
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0},
-            {0,0,1,-1,-1,-1,1},
-            {0,0,-1,-1,0,0,0},
-            {0,0,-1,0,0,0,0},
-            {0,0,-1,0,0,0,0},
-            {0,0,1,0,0,0,0}
+            {0,0,0,1,1, 1,0},
+            {0,0,1,0,0,0,0},
+            {0,0,1,0,0,0,0},
+            {0,0,1,0,0,0,0},
+            {0,0,0,0,0,0,0}
         };
         
         Game.WinCount = 5;
@@ -227,7 +227,6 @@ public static class Tests
         Game.MapSize = 7;
         eval = AI.GetAIMove(testMap);
         Game.DrawMap(testMap);
-        AreEqual(eval, 2.8);
-
+        AreEqual(eval, -21.8);
     }
 }
