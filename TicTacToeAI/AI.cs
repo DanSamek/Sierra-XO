@@ -109,10 +109,10 @@ public class AI
                 double value = Minimax(map, depth - 1, false, alpha, beta);
                 map[arr.Y, arr.X] = 0;
                 maxValue = Math.Max(value, maxValue);
-                if (maxValue > beta) break;
-
-                if (possibleMaxValue == maxValue) break;
                 alpha = Math.Max(alpha, maxValue);
+
+                if (beta <= alpha) break;
+                if (possibleMaxValue == maxValue) break;
             }
             return maxValue;
         }
@@ -130,11 +130,11 @@ public class AI
                 double value = Minimax(map, depth - 1, true, alpha, beta);
                 map[arr.Y, arr.X] = 0;
 
-                maxValue = Math.Min(value, maxValue);
-
-                if (maxValue < alpha) break;
-                if (possibleMaxValue == maxValue) break;
+                maxValue = Math.Min(value, maxValue); 
                 beta = Math.Min(maxValue, beta);
+
+                if (beta <= alpha) break;
+                if (possibleMaxValue == maxValue) break;
             }
             return maxValue;
         }
