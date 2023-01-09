@@ -6,6 +6,8 @@ public class AI
 {
     public static int Depth = 5;
     public static int positionEvaluated = 0;
+
+    static Stopwatch stopwatch1 = new();
     public static double GetAIMove(int[,] map)
     {
         // AI is maximalizer
@@ -45,17 +47,22 @@ public class AI
                 maxValue = value;
                 bestX = arr.Y;
                 bestY = arr.X;
+                if (value == Depth * 10000) break;
             }
         }
 
         stopwatch.Stop();
-        Console.WriteLine($"{stopwatch.ElapsedMilliseconds} ms");
-        Console.WriteLine($"{stopwatch.ElapsedMilliseconds / (double)1000} s");
-        Console.WriteLine($"Moves evaulated {positionEvaluated}");
+        Console.WriteLine($"Total Runtime {stopwatch.ElapsedMilliseconds} ms");
+        Console.WriteLine($"Total Runtime {stopwatch.ElapsedMilliseconds / (double)1000} s");
+        Console.WriteLine($"Moves evaluated {positionEvaluated}");
+        Console.WriteLine($"Eval time {stopwatch1.ElapsedMilliseconds} ms");
+        Console.WriteLine($"Eval time {stopwatch1.ElapsedMilliseconds / (double)1000} s");
         map[bestX, bestY] = -1;
         Console.WriteLine($"Y = {bestX}, X = {bestY}");
         TranspositionTable.ClearTable();
         positionEvaluated = 0;
+
+        stopwatch1.Restart();
         return maxValue;
     }
 
@@ -99,9 +106,8 @@ public class AI
         // for maximalizer
         if (isMaximalizer)
         {
-            var max = evalPoints.Max(x => x.Eval);
             double maxValue = int.MinValue;
-            int possibleMaxValue = depth == 1 ? 10000 : (depth - 1) * 10000;
+            int possibleMaxValue = depth == 1 ? 10000 : (depth - 2) * 10000;
             var p = evalPoints.Where(x => x.Eval >= avg).OrderBy(x => x.Eval);
             foreach (var arr in p)
             {
@@ -120,9 +126,8 @@ public class AI
         // for minimalizer - player
         if (!isMaximalizer)
         {
-            var min = (double)evalPoints.Min(x => x.Eval);
             double maxValue = int.MaxValue;
-            int possibleMaxValue = depth == 1 ? -10000 : (depth -1) * -10000;
+            int possibleMaxValue = depth == 1 ? -10000 : (depth - 2) * -10000;
             var p = evalPoints.Where(x => x.Eval <= avg).OrderByDescending(x => x.Eval);
             foreach (var arr in p)
             {
@@ -193,6 +198,8 @@ public class AI
 
     public static double CalculateCurrentPosition(int[,] map, bool isMaximalizer)
     {
+
+        stopwatch1.Start();
         var player = isMaximalizer ? -1 : 1;
         double myAttack = 0;
         double enemyAttack = 0;
@@ -226,7 +233,7 @@ public class AI
         myAttack = isMaximalizer ? myAttack : -myAttack;
 
         var evaluatedValue = myAttack + enemyAttack;
-
+        stopwatch1.Stop();
         return Math.Round(evaluatedValue, 2);
     }
 

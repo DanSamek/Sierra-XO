@@ -3,7 +3,6 @@ public class Game
 {
     public static int MapSize = 10;
     public static int WinCount = 5;
-    public static int Depth = 5;
     static bool SomeoneWins = false;
     static int[] players = { 1, -1 };
     static bool AIFirstMove = true;

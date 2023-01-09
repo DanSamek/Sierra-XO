@@ -175,7 +175,7 @@ public static class Tests
             {0,0,-1,0,0},
             {0,0,-1,0,0}
         };
-        Game.Depth = 9;
+        AI.Depth = 9;
         Game.MapSize = 5;
         Game.WinCount = 4;
         var eval = AI.GetAIMove(testMap);
@@ -206,7 +206,7 @@ public static class Tests
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0}
         };
-        Game.Depth = 9;
+        AI.Depth = 7;
         Game.MapSize = 7;
         eval = AI.GetAIMove(testMap);
         Game.DrawMap(testMap);
@@ -222,13 +222,10 @@ public static class Tests
             {0,0,0,0,0,0,0}
         };
         
-        Game.WinCount = 5;
-        Game.MapSize = 7;
         eval = AI.GetAIMove(testMap);
         Game.DrawMap(testMap);
         AreEqual(eval, -21.8);
         Game.MapSize = 10;
-        Game.WinCount = 5;
         testMap = new int[10, 10]
         {
             {0,0,0,0,0,0,0,0,0,0,},
