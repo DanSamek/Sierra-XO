@@ -135,7 +135,7 @@ public class AI
                 double value = Minimax(map, depth - 1, true, alpha, beta);
                 map[arr.Y, arr.X] = 0;
 
-                maxValue = Math.Min(value, maxValue); 
+                maxValue = Math.Min(value, maxValue);
                 beta = Math.Min(maxValue, beta);
 
                 if (beta <= alpha) break;
@@ -189,7 +189,7 @@ public class AI
                         if (!optimalPositions.Any(arr => arr[0] == y + i && arr[1] == x - i))
                             if (y + i < Game.MapSize && x - i >= 0 && map[y + i, x - i] == 0)
                                 optimalPositions.Add(new int[] { y + i, x - i });
-                    }  
+                    }
                 }
             }
         }
@@ -198,43 +198,38 @@ public class AI
 
     public static double CalculateCurrentPosition(int[,] map, bool isMaximalizer)
     {
-
-        stopwatch1.Start();
         var player = isMaximalizer ? -1 : 1;
+        ResetVisited();
         double myAttack = 0;
         double enemyAttack = 0;
         List<List<Point>> positionStates = new();
 
         var reversedPlayer = isMaximalizer ? 1 : -1;
         for (int y = 0; y < Game.MapSize; y++) for (int x = 0; x < Game.MapSize; x++) if (map[y, x] == reversedPlayer) BFS(x, y, map, positionStates, reversedPlayer);
-        
-        var values = RemoveSmallerDuplicates(positionStates);
-        bool mustDefend = false;
 
-        foreach (var state in values)
+        bool mustDefend = false;
+        foreach (var state in positionStates)
         {
             if (GetValueForCurrentState(state, map, out var attack)) mustDefend = true;
             enemyAttack += attack;
         }
- 
+
         positionStates.Clear();
+        ResetVisited();
         for (int y = 0; y < Game.MapSize; y++) for (int x = 0; x < Game.MapSize; x++) if (map[y, x] == player) BFS(x, y, map, positionStates, player);
 
-        values.Clear();
-        values = RemoveSmallerDuplicates(positionStates);
-
-        foreach (var state in values)
+        foreach (var state in positionStates)
         {
             GetValueForCurrentState(state, map, out var attack, mustDefend);
             myAttack += attack;
         }
 
-        enemyAttack = isMaximalizer? -enemyAttack : enemyAttack;
+        enemyAttack = isMaximalizer ? -enemyAttack : enemyAttack;
         myAttack = isMaximalizer ? myAttack : -myAttack;
 
         var evaluatedValue = myAttack + enemyAttack;
-        stopwatch1.Stop();
-        return Math.Round(evaluatedValue, 2);
+
+        return evaluatedValue;
     }
 
     public static bool GetValueForCurrentState(List<Point> state, int[,] map, out double attackValue, bool mustDefend = false)
@@ -319,29 +314,10 @@ public class AI
         return opened;
     }
 
-    static List<List<Point>> RemoveSmallerDuplicates(List<List<Point>> positionStates)
-    {
-        var sortedBySize = positionStates.OrderByDescending(x => x.Count).ToList();
-        for (int i = 0; i < sortedBySize.Count; i++)
-        {
-            foreach (var itemToCheck in sortedBySize.ToList())
-            {
-                if (itemToCheck == sortedBySize[i]) continue;
-
-                bool allSame = true;
-                foreach (var currChecked in itemToCheck)
-                {
-                    if (!sortedBySize[i].Any(x => x.X == currChecked.X && x.Y == currChecked.Y))
-                    {
-                        allSame = false;
-                        break;
-                    }
-                }
-                if (allSame) sortedBySize.Remove(itemToCheck);
-            }
-        }
-        return sortedBySize;
-    }
+    private static bool[,] horizontalVisited = new bool[Game.MapSize, Game.MapSize];
+    private static bool[,] verticalVisited = new bool[Game.MapSize, Game.MapSize];
+    private static bool[,] rightDiagonalVisited = new bool[Game.MapSize, Game.MapSize];
+    private static bool[,] leftDiagonalVisited = new bool[Game.MapSize, Game.MapSize];
 
     static void BFS(int startX, int startY, int[,] map, List<List<Point>> positionStates, int player)
     {
@@ -349,12 +325,13 @@ public class AI
         Point start = new();
         start.X = startX;
         start.Y = startY;
-        bool[,] visited = new bool[Game.MapSize, Game.MapSize];
-        var neighbours = GetNeighbours(start, visited, map, player);
+        var neighbours = GetNeighbours(start, map, player, out var removedMirror);
 
         List<Point> outPoints = new();
         if (neighbours.Count() == 0)
         {
+            if (removedMirror) return;
+
             outPoints.Add(start);
             positionStates.Add(outPoints);
         }
@@ -364,7 +341,8 @@ public class AI
         while (queue.Count > 0)
         {
             var currPoint = queue.Dequeue();
-            visited[currPoint.Y, currPoint.X] = true;
+
+            if (IsVisited(currPoint)) continue;
 
             // Nalezení dalšího bodu v cestě
             if (currPoint.X + currPoint.DiffX >= 0 && currPoint.X + currPoint.DiffX < Game.MapSize && currPoint.Y + currPoint.DiffY >= 0 && currPoint.Y + currPoint.Y < Game.MapSize)
@@ -378,6 +356,7 @@ public class AI
                         Parent = currPoint,
                         X = currPoint.X + currPoint.DiffX,
                         Y = currPoint.Y + currPoint.DiffY,
+                        MoveType = currPoint.MoveType
                     });
                     continue;
                 }
@@ -418,29 +397,99 @@ public class AI
         }
     }
 
-    static IEnumerable<Point> GetNeighbours(Point currentPoint, bool[,] visited, int[,] map, int player)
+    static IEnumerable<Point> GetNeighbours(Point currentPoint, int[,] map, int player, out bool removedMirror)
     {
+        removedMirror = false;
         List<Point> allPoints = new List<Point>()
         {
             // X
-            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = 1},
-            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = -1},
+            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = 1, MoveType = MoveTypes.Horizontal},
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = -1, MoveType = MoveTypes.Horizontal},
 
             //Y
-            new Point(){ X = currentPoint.X, Y = currentPoint.Y + 1, Parent = currentPoint, DiffY = 1},
-            new Point(){ X = currentPoint.X, Y = currentPoint.Y - 1, Parent = currentPoint,  DiffY = -1},
+            new Point(){ X = currentPoint.X, Y = currentPoint.Y + 1, Parent = currentPoint, DiffY = 1, MoveType =  MoveTypes.Vertical},
+            new Point(){ X = currentPoint.X, Y = currentPoint.Y - 1, Parent = currentPoint,  DiffY = -1, MoveType = MoveTypes.Vertical},
 
             // Dia
-            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = -1, DiffY = -1},
-            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = 1, DiffY = 1},
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = -1, DiffY = -1,MoveType = MoveTypes.RightDiagonal},
+            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = 1, DiffY = 1,MoveType = MoveTypes.LeftDiagonal},
 
             // Dia
-            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = -1, DiffY = 1},
-            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = 1, DiffY = -1},
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = -1, DiffY = 1,MoveType = MoveTypes.RightDiagonal},
+            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = 1, DiffY = -1,MoveType = MoveTypes.LeftDiagonal},
         };
-        var possiblePoints = allPoints.Where(p => p.X >= 0 && p.X < Game.MapSize && p.Y >= 0 && p.Y < Game.MapSize && !visited[p.Y, p.X] && map[p.Y, p.X] == player).ToList();
 
-        return possiblePoints;
+
+        bool isOk;
+        int mirroredX;
+        int mirroredY;
+
+        List<Point> outPoints = new();
+
+        foreach (var p in allPoints)
+        {
+            isOk = p.X >= 0 && p.X < Game.MapSize && p.Y >= 0 && p.Y < Game.MapSize && map[p.Y, p.X] == player;
+
+            if (!isOk) continue;
+            // Má bod zrcadlo
+            mirroredX = p.X - (p.DiffX * 2);
+            mirroredY = p.Y - (p.DiffY * 2);
+
+            if (mirroredX >= 0 && mirroredY >= 0 && mirroredX < Game.MapSize && mirroredY < Game.MapSize)
+            {
+                // Je někde uprostřed
+                if (map[mirroredY, mirroredX] == player)
+                {
+                    removedMirror = true;
+                    continue;
+                }
+            }
+
+            currentPoint.MoveType = p.MoveType;
+            IsVisited(currentPoint);
+            outPoints.Add(p);
+        }
+
+        return outPoints;
+    }
+
+    private static bool IsVisited(Point currPoint)
+    {
+        switch (currPoint.MoveType)
+        {
+            case MoveTypes.Horizontal:
+                if (horizontalVisited[currPoint.Y, currPoint.X]) return true;
+                horizontalVisited[currPoint.Y, currPoint.X] = true;
+                break;
+
+            case MoveTypes.Vertical:
+                if (verticalVisited[currPoint.Y, currPoint.X]) return true;
+                verticalVisited[currPoint.Y, currPoint.X] = true;
+                break;
+
+            case MoveTypes.RightDiagonal:
+                if (rightDiagonalVisited[currPoint.Y, currPoint.X]) return true;
+                rightDiagonalVisited[currPoint.Y, currPoint.X] = true;
+                break;
+
+            case MoveTypes.LeftDiagonal:
+                if (leftDiagonalVisited[currPoint.Y, currPoint.X]) return true;
+                leftDiagonalVisited[currPoint.Y, currPoint.X] = true;
+                break;
+
+            // první bod
+            default:
+                break;
+        }
+        return false;
+    }
+
+    private static void ResetVisited()
+    {
+        horizontalVisited = new bool[Game.MapSize, Game.MapSize];
+        verticalVisited = new bool[Game.MapSize, Game.MapSize];
+        rightDiagonalVisited = new bool[Game.MapSize, Game.MapSize];
+        leftDiagonalVisited = new bool[Game.MapSize, Game.MapSize];
     }
 }
 
@@ -470,6 +519,8 @@ public class Point : PointBase
     public Point Parent { get; set; }
     public int DiffX { get; set; } = 0;
     public int DiffY { get; set; } = 0;
+
+    public MoveTypes MoveType { get; set; }
 }
 
 public class PointBase
@@ -481,4 +532,13 @@ public class PointBase
 public class EvalPoint : PointBase
 {
     public double Eval { get; set; }
+}
+
+
+public enum MoveTypes
+{
+    Horizontal,
+    Vertical,
+    RightDiagonal,
+    LeftDiagonal
 }
