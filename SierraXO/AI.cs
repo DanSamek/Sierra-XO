@@ -286,33 +286,6 @@ public class AI
         return false;
     }
 
-    // Still wrong DDDD:
-    // IF this will be ok, we are done :D
-    static int GetOpenedSideCount(List<Point> points, int[,] map)
-    {
-        int opened = 0;
-        var copyPoints = new List<Point>(points);
-        copyPoints.RemoveRange(1, points.Count - 2);
-        var p = copyPoints.OrderBy(x => x.X).OrderBy(x => x.Y);
-
-        var lastPoint = p.ElementAt(1);
-        var firstPoint = p.ElementAt(0);
-
-        var diffX = lastPoint.DiffX == 0 ? firstPoint.DiffX : lastPoint.DiffX;
-        var diffY = lastPoint.DiffY == 0 ? firstPoint.DiffY : lastPoint.DiffY;
-
-        var lY = lastPoint.Y + diffY;
-        var lX = lastPoint.X + diffX;
-
-        if (lY >= 0 && lY < Game.MapSize && lX >= 0 && lX < Game.MapSize) if (map[lY, lX] == 0) opened++;
-
-        var fY = firstPoint.Y - diffY;
-        var fX = firstPoint.X + Math.Abs(diffX);
-
-        if (fY >= 0 && fY < Game.MapSize && fX >= 0 && fX < Game.MapSize) if (map[fY, fX] == 0) opened++;
-        return opened;
-    }
-
     public static int BetaGetOpenedSideCount(List<Point> points, int[,] map)
     {
         int openedCount = 0;
