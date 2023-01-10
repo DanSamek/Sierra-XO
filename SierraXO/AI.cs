@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text;
 
 namespace TicTacToeAI;
@@ -13,7 +13,6 @@ public class AI
         // AI is maximalizer
         var optimalPos = PositionsToCheck(map);
 
-        double maxValue = int.MinValue;
         int bestX = 0;
         int bestY = 0;
         double beta = int.MaxValue;
@@ -36,7 +35,7 @@ public class AI
             });
         }
 
-        maxValue = int.MinValue;
+        double maxValue = int.MinValue;
         foreach (var arr in evalPoints)
         {
             map[arr.Y, arr.X] = -1;
@@ -237,7 +236,7 @@ public class AI
         attackValue = 0;
         if (Game.WinCount - 2 == state.Count)
         {
-            var opened = GetOpenedSideCount(state, map);
+            var opened = BetaGetOpenedSideCount(state, map);
             if (opened == 2)
             {
                 if (mustDefend)
@@ -261,7 +260,7 @@ public class AI
         }
         if (Game.WinCount - 1 == state.Count)
         {
-            var opened = GetOpenedSideCount(state, map);
+            var opened = BetaGetOpenedSideCount(state, map);
             if (opened == 1)
             {
                 if (mustDefend)
@@ -314,6 +313,37 @@ public class AI
         return opened;
     }
 
+    public static int BetaGetOpenedSideCount(List<Point> points, int[,] map)
+    {
+        int openedCount = 0;
+
+        var firstP = points.First();
+        var lastP = points.Last();
+        var secondPointFromStart = points.ElementAt(1);
+        var secondPointFromEnd = points.ElementAt(points.Count - 2);
+
+        var firstDiffX = firstP.X - secondPointFromStart.X;
+        var firstDiffY = firstP.Y - secondPointFromStart.Y;
+
+        var Fx = firstP.X + firstDiffX;
+        var Fy = firstP.Y + firstDiffY;
+
+        var lastDiffX = lastP.X - secondPointFromEnd.X;
+        var lastDiffY = lastP.Y - secondPointFromEnd.Y;
+
+        var Lx = lastP.X + lastDiffX;
+        var Ly = lastP.Y + lastDiffY;
+
+        if (Fx >= 0 && Fy >= 0 && Fx < Game.MapSize && Fy < Game.MapSize)
+            if (map[Fy, Fx] == 0) openedCount++;
+
+
+        if (Lx >= 0 && Ly >= 0 && Lx < Game.MapSize && Ly < Game.MapSize)
+            if (map[Ly, Lx] == 0) openedCount++;
+
+        return openedCount;
+    }
+
     private static bool[,] horizontalVisited = new bool[Game.MapSize, Game.MapSize];
     private static bool[,] verticalVisited = new bool[Game.MapSize, Game.MapSize];
     private static bool[,] rightDiagonalVisited = new bool[Game.MapSize, Game.MapSize];
@@ -345,7 +375,7 @@ public class AI
             if (IsVisited(currPoint)) continue;
 
             // Nalezení dalšího bodu v cestě
-            if (currPoint.X + currPoint.DiffX >= 0 && currPoint.X + currPoint.DiffX < Game.MapSize && currPoint.Y + currPoint.DiffY >= 0 && currPoint.Y + currPoint.Y < Game.MapSize)
+            if (currPoint.X + currPoint.DiffX >= 0 && currPoint.X + currPoint.DiffX < Game.MapSize && currPoint.Y + currPoint.DiffY >= 0 && currPoint.Y + currPoint.DiffY < Game.MapSize)
             {
                 if (map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX] == player)
                 {
@@ -374,25 +404,6 @@ public class AI
                 outPoints.Add(parent);
                 parent = parent.Parent;
             }
-
-            var count = outPoints.Count;
-            var maxSameCount = 0;
-            bool toBreak = false;
-            foreach (var ps in positionStates)
-            {
-                int checkCount = 0;
-                foreach (var p in outPoints)
-                {
-                    if (ps.Any(x => x.X == p.X && x.Y == p.Y)) checkCount++;
-                }
-                if (checkCount > maxSameCount) maxSameCount = checkCount;
-                if (count == maxSameCount)
-                {
-                    toBreak = true;
-                    break;
-                }
-            }
-            if (toBreak) continue;
             positionStates.Add(outPoints);
         }
     }
@@ -411,12 +422,12 @@ public class AI
             new Point(){ X = currentPoint.X, Y = currentPoint.Y - 1, Parent = currentPoint,  DiffY = -1, MoveType = MoveTypes.Vertical},
 
             // Dia
-            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = -1, DiffY = -1,MoveType = MoveTypes.RightDiagonal},
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = -1, DiffY = -1,MoveType = MoveTypes.LeftDiagonal},
             new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = 1, DiffY = 1,MoveType = MoveTypes.LeftDiagonal},
 
             // Dia
             new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = -1, DiffY = 1,MoveType = MoveTypes.RightDiagonal},
-            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = 1, DiffY = -1,MoveType = MoveTypes.LeftDiagonal},
+            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = 1, DiffY = -1,MoveType = MoveTypes.RightDiagonal},
         };
 
 

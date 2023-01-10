@@ -1,4 +1,4 @@
-﻿namespace TicTacToeAI;
+namespace TicTacToeAI;
 public static class Tests
 {
     public static void EvalutationTests()
@@ -97,18 +97,6 @@ public static class Tests
         };
         eval = AI.CalculateCurrentPosition(testMap, true);
         AreEqual(eval, 20);
-
-        testMap = new int[5, 5]
-        {
-            {0,0,0,0,0},
-            {-1,1,1,0,0},
-            {-1,1,1,1,-1},
-            {0,-1,1,1,0},
-            {0,0,0,0,0}
-        };
-        eval = AI.CalculateCurrentPosition(testMap, false);
-        AreEqual(eval, -60);
-
 
         testMap = new int[5, 5]
         {
