@@ -4,15 +4,16 @@ using System.Text;
 namespace TicTacToeAI;
 public class AI
 {
-    public static int Depth = 5;
+    public static int Depth = 7;
     public static int positionEvaluated = 0;
 
-    static Stopwatch stopwatch1 = new();
+    static Stopwatch evalTime = new();
+    static bool defendNeeded = false;
+
     public static double GetAIMove(int[,] map)
     {
         // AI is maximalizer
         var optimalPos = PositionsToCheck(map);
-
         int bestX = 0;
         int bestY = 0;
         double beta = int.MaxValue;
@@ -36,7 +37,12 @@ public class AI
         }
 
         double maxValue = int.MinValue;
-        foreach (var arr in evalPoints)
+
+        var maxEval = evalPoints.Max(x => x.Eval);
+
+        var p = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.OrderByDescending(x => x.Eval);
+
+        foreach (var arr in p)
         {
             map[arr.Y, arr.X] = -1;
             var value = Minimax(map, Depth, false, alpha, beta);
@@ -54,14 +60,15 @@ public class AI
         Console.WriteLine($"Total Runtime {stopwatch.ElapsedMilliseconds} ms");
         Console.WriteLine($"Total Runtime {stopwatch.ElapsedMilliseconds / (double)1000} s");
         Console.WriteLine($"Moves evaluated {positionEvaluated}");
-        Console.WriteLine($"Eval time {stopwatch1.ElapsedMilliseconds} ms");
-        Console.WriteLine($"Eval time {stopwatch1.ElapsedMilliseconds / (double)1000} s");
+        Console.WriteLine($"Eval time {evalTime.ElapsedMilliseconds} ms");
+        Console.WriteLine($"Eval time {evalTime.ElapsedMilliseconds / (double)1000} s");
         map[bestX, bestY] = -1;
         Console.WriteLine($"Y = {bestX}, X = {bestY}");
         TranspositionTable.ClearTable();
         positionEvaluated = 0;
 
-        stopwatch1.Restart();
+        evalTime.Reset();
+        defendNeeded = false;
         return maxValue;
     }
 
@@ -107,7 +114,7 @@ public class AI
         {
             double maxValue = int.MinValue;
             int possibleMaxValue = depth == 1 ? 10000 : (depth - 2) * 10000;
-            var p = evalPoints.Where(x => x.Eval >= avg).OrderBy(x => x.Eval);
+            var p = evalPoints.Where(x => x.Eval > avg).OrderByDescending(x => x.Eval);
             foreach (var arr in p)
             {
                 map[arr.Y, arr.X] = -1;
@@ -127,7 +134,7 @@ public class AI
         {
             double maxValue = int.MaxValue;
             int possibleMaxValue = depth == 1 ? -10000 : (depth - 2) * -10000;
-            var p = evalPoints.Where(x => x.Eval <= avg).OrderByDescending(x => x.Eval);
+            var p = evalPoints.Where(x => x.Eval < avg).OrderBy(x => x.Eval);
             foreach (var arr in p)
             {
                 map[arr.Y, arr.X] = 1;
@@ -197,6 +204,7 @@ public class AI
 
     public static double CalculateCurrentPosition(int[,] map, bool isMaximalizer)
     {
+        evalTime.Start();
         var player = isMaximalizer ? -1 : 1;
         ResetVisited();
         double myAttack = 0;
@@ -209,7 +217,11 @@ public class AI
         bool mustDefend = false;
         foreach (var state in positionStates)
         {
-            if (GetValueForCurrentState(state, map, out var attack)) mustDefend = true;
+            if (GetValueForCurrentState(state, map, out var attack))
+            {
+                mustDefend = true;
+                defendNeeded = true;
+            }
             enemyAttack += attack;
         }
 
@@ -227,48 +239,33 @@ public class AI
         myAttack = isMaximalizer ? myAttack : -myAttack;
 
         var evaluatedValue = myAttack + enemyAttack;
-
+        evalTime.Stop();
         return evaluatedValue;
     }
 
     public static bool GetValueForCurrentState(List<Point> state, int[,] map, out double attackValue, bool mustDefend = false)
     {
         attackValue = 0;
-        if (Game.WinCount - 2 == state.Count)
+
+        var opened = BetaGetOpenedSideCount(state, map);
+
+        if (Game.WinCount == state.Count)
         {
-            var opened = BetaGetOpenedSideCount(state, map);
-            if (opened == 2)
-            {
-                if (mustDefend)
-                {
-                    attackValue += 800;
-                    return true;
-                }
-                attackValue += 10000;
-                return true;
-            }
+            attackValue = 10000;
+            return true;
+        }
+
+        // 4
+        if(Game.WinCount - 1 == state.Count)
+        {
             if (opened == 1)
             {
                 if (mustDefend)
                 {
-                    attackValue += 400;
-                    return true;
+                    attackValue += 500;
+                    return false;
                 }
                 attackValue += 2500;
-                return true;
-            }
-        }
-        if (Game.WinCount - 1 == state.Count)
-        {
-            var opened = BetaGetOpenedSideCount(state, map);
-            if (opened == 1)
-            {
-                if (mustDefend)
-                {
-                    attackValue += 100;
-                    return true;
-                }
-                attackValue += 7500;
                 return true;
             }
             if (opened == 2)
@@ -278,16 +275,45 @@ public class AI
                     attackValue += 2500;
                     return true;
                 }
-                attackValue += 10000;
+                attackValue += 5000;
                 return true;
             }
         }
-        attackValue += state.Count * 10;
+        else if (Game.WinCount - 2 == state.Count)
+        {
+            if (opened == 1)
+            {
+                if (mustDefend)
+                {
+                    attackValue += 100;
+                    return true;
+                }
+                attackValue += 2500;
+                return false;
+            }
+            if (opened == 2)
+            {
+                if (mustDefend)
+                {
+                    attackValue += 200;
+                    return true;
+                }
+                attackValue += 4000;
+                return true;
+            }
+        }
+        else
+        {
+            if (opened == 2) attackValue += state.Count * 10;
+            if (opened == 1) attackValue += state.Count * 5;
+        }
         return false;
     }
 
     public static int BetaGetOpenedSideCount(List<Point> points, int[,] map)
     {
+        if (points.Count == 1) return 2;
+
         int openedCount = 0;
 
         var firstP = points.First();
@@ -470,10 +496,10 @@ public class AI
 
     private static void ResetVisited()
     {
-        horizontalVisited = new bool[Game.MapSize, Game.MapSize];
-        verticalVisited = new bool[Game.MapSize, Game.MapSize];
-        rightDiagonalVisited = new bool[Game.MapSize, Game.MapSize];
-        leftDiagonalVisited = new bool[Game.MapSize, Game.MapSize];
+        Array.Clear(horizontalVisited);
+        Array.Clear(verticalVisited);
+        Array.Clear(rightDiagonalVisited);
+        Array.Clear(leftDiagonalVisited);
     }
 }
 

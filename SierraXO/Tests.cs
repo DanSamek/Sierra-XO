@@ -61,7 +61,7 @@ public static class Tests
             { 0,0,0,0,0 }
         };
         eval = AI.CalculateCurrentPosition(testMap, true);
-        AreEqual(eval, 40);
+        AreEqual(eval, 7500);
 
         testMap = new int[5, 5]
         {
@@ -72,7 +72,7 @@ public static class Tests
             { 0,0,0,0,0 }
         };
         eval = AI.CalculateCurrentPosition(testMap, true);
-        AreEqual(eval, 2560);
+        AreEqual(eval, 10060);
 
 
         testMap = new int[5, 5]
@@ -185,16 +185,14 @@ public static class Tests
             {0,0,0,0,0,0,0,0},
         };
         Game.MapSize = 8;
+        AI.Depth = 4;
         var r = AI.CalculateCurrentPosition(testMap, true);
         Console.WriteLine(r);
         eval = AI.GetAIMove(testMap);
         Game.DrawMap(testMap);
         AreEqual(eval, 5000);
 
-
         Game.MapSize = 5;
-
-
 
         testMap = new int[5, 5]
         {

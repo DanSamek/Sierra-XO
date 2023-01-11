@@ -12,8 +12,6 @@ public class Game
 
     public static void Main(string[] args)
     {
-        Tests.EvalutationTests();
-        return;
         TicTacToe();
     }
 
