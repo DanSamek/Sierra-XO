@@ -58,7 +58,8 @@ function renderGame(){
 	}
 
 	document.getElementById('game').style.gridTemplateColumns = `repeat(${mapSize}, auto)`;
-	document.getElementById('game').style.display = "grid";		
+	document.getElementById('game').style.justifyContent = "center";
+		document.getElementById('game').style.display = "grid";
 	const squares = document.querySelectorAll('.square');
 	squares.forEach((square) => {
 		square.addEventListener('click', () => {
