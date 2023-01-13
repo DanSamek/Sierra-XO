@@ -156,6 +156,9 @@ public static class Tests
     public static void AITests()
     {
 
+        int x;
+        int y;
+
         var testMap = new int[5, 5]
         {
             {0,0,0,0,0},
@@ -167,7 +170,7 @@ public static class Tests
         AI.Depth = 9;
         Game.MapSize = 5;
         Game.WinCount = 4;
-        var eval = AI.GetAIMove(testMap);
+        var eval = AI.GetAIMove(testMap, out x, out y);
         Game.DrawMap(testMap);
         AreEqual(eval, 5000);
 
@@ -188,7 +191,7 @@ public static class Tests
         AI.Depth = 4;
         var r = AI.CalculateCurrentPosition(testMap, true);
         Console.WriteLine(r);
-        eval = AI.GetAIMove(testMap);
+        eval = AI.GetAIMove(testMap, out x, out y);
         Game.DrawMap(testMap);
         AreEqual(eval, 5000);
 
@@ -202,7 +205,7 @@ public static class Tests
             {0,-1,-1,-1,0},
             {0,0,-1,0,0}
         };
-        eval = AI.GetAIMove(testMap);
+        eval = AI.GetAIMove(testMap, out x, out y);
         Game.DrawMap(testMap);
         AreEqual(eval, 5000);
         Game.WinCount = 5;
@@ -219,7 +222,7 @@ public static class Tests
         };
         AI.Depth = 7;
         Game.MapSize = 7;
-        eval = AI.GetAIMove(testMap);
+        eval = AI.GetAIMove(testMap, out x, out y);
         Game.DrawMap(testMap);
         AreEqual(eval, 30);
         testMap = new int[7, 7]
@@ -233,7 +236,7 @@ public static class Tests
             {0,0,0,0,0,0,0}
         };
         
-        eval = AI.GetAIMove(testMap);
+        eval = AI.GetAIMove(testMap, out x, out y);
         Game.DrawMap(testMap);
         AreEqual(eval, -21.8);
         Game.MapSize = 10;
@@ -250,7 +253,7 @@ public static class Tests
             {0,0,0,0,0,0,0,0,0,0,},
             {0,0,0,0,0,0,0,0,0,0,},
         };
-        eval = AI.GetAIMove(testMap);
+        eval = AI.GetAIMove(testMap, out x, out y);
         Game.DrawMap(testMap);
         AreEqual(eval, -21.8);
     }

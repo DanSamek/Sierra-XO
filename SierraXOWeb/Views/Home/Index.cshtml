@@ -1,0 +1,195 @@
+﻿@{
+    ViewData["Title"] = "Sierra XO WEB";
+}
+
+
+
+<div id="game"></div>
+<span id="message"></span>
+<span id="reset">new game</span>
+
+
+<script>
+
+players= [1,-1];
+
+function renderGame(){
+	var wins = false;
+	var mapSize = 15;
+	var total = Math.pow(mapSize,2);
+	var eliminated = 0;
+	var winCount = 5;
+	var AItoPlay = false;
+
+	var gameArray = Array.from(Array(mapSize), () => new Array(mapSize));
+	var el = document.getElementById("message")
+	var firstAIMove = true;
+
+	el.innerText = "";
+	for(let y = 0; y < mapSize; y++){
+		for(let x = 0; x < mapSize; x++){
+			const square = document.createElement('div');
+			square.classList.add('square');
+			square.setAttribute("X", y);
+			square.setAttribute("Y", x);
+			// Empty
+			gameArray[y][x] = 0;
+			document.getElementById('game').appendChild(square);
+		}
+	}
+
+	var doesHumanStartsFirst = Math.floor(Math.random() * 10) % 4 == 0;
+	if(doesHumanStartsFirst == false)
+	{
+		var max = mapSize/2;
+		var min = mapSize/2-1;
+		var bestStartX = Math.floor(Math.random() * (max - min + 1)) + min;
+		var bestStartY =Math.floor(Math.random() * (max - min + 1)) + min;
+		var sq = document.querySelectorAll('.square');
+		sq.forEach((square) => {
+			var x = square.getAttribute("y");
+			var y = square.getAttribute("x");
+			if(x == bestStartX && y == bestStartY){
+				square.classList.add('circle'); 
+				gameArray[bestStartX][bestStartY] = -1;
+			}
+		})
+		firstAIMove = false;
+	}
+
+	document.getElementById('game').style.gridTemplateColumns = `repeat(${mapSize}, auto)`;
+	document.getElementById('game').style.display = "grid";		
+	const squares = document.querySelectorAll('.square');
+	squares.forEach((square) => {
+		square.addEventListener('click', () => {
+			if(wins  == true || AItoPlay == true) return;
+			if(square.classList.contains('circle') || square.classList.contains('cross')) return;
+			eliminated++;
+			var x = square.getAttribute("x");
+			var y = square.getAttribute("y");
+		
+			// +1
+			square.classList.add('cross');
+			gameArray[x][y] = 1;
+
+			AItoPlay = true;
+			if(AItoPlay){
+				AIMove(gameArray, squares);
+				AItoPlay = false;
+			}
+			var someoneWins = checkWin(gameArray);
+			var el = document.getElementById("message")
+			if(someoneWins == 1){
+				el.innerText = "cross wins";
+				wins= true;
+			}
+			if(someoneWins == -1){
+				console.log(someoneWins);
+				wins= true;
+				el.innerText = "circle wins";
+			}
+			if(eliminated === total){
+				wins= true;
+				el.innerText = "draw";
+			} 
+		})
+	})
+	var reset = document.getElementById("reset");
+	reset.addEventListener("click", ()=>{
+		document.getElementById('game').innerHTML = null;
+		renderGame();
+	})
+	function checkWin(board)
+	{
+		for (let p = 0; p <2; p++){
+			for(let y = 0; y <mapSize; y++){
+				for(let x = 0; x < mapSize; x++){
+					// check for horizontal
+					if(x + winCount < mapSize){
+						let win = true;
+						for(let i = 0; i < winCount; i++){
+							if(board[x+i][y] != players[p]){
+								win = false;
+							}
+						}
+						if(win == true){
+							return players[p];
+						}
+					}
+					// check for vertical
+					if(y + winCount < mapSize){
+						let win = true;
+						for(let i = 0; i < winCount; i++){
+							if(board[x][y+i] != players[p]){
+								win = false;
+							}
+						}
+						if(win == true){
+							return players[p];
+						}
+					}
+					// check for diagonal win
+					if(x + winCount < mapSize +1 && y + winCount -1 < mapSize){
+						let win = true;
+						for(let i = 0; i < winCount; i++){
+							if(board[x+i][y+i] != players[p]){
+								win = false;
+							}
+						}
+						if(win == true){
+							return players[p];
+						}
+
+					}
+					// check for anti diagonal
+					if(x + winCount < mapSize+1 && y - winCount >= -1){
+						let win = true;
+						for(let i = 0; i < winCount; i++){
+							if(board[x+i][y-i] != players[p]){
+								win = false;
+							}
+						}
+						if(win == true){
+							return players[p];
+						}
+					}
+				}
+			}
+		}
+		return 0;
+	}
+}
+	async function AIMove(gameArray, squares) {
+		const response = await fetch('/move', {
+			method: 'POST',
+			body: JSON.stringify({
+				Map: gameArray,
+				WinCount: 5,
+				MapSize: 15
+			}),
+			 headers: {
+                'Accept': 'application/json',
+                'Content-type': 'application/json',
+            }
+		});
+		const data = await response.json();
+		console.log(data);
+
+		// -1
+		gameArray[data.x][data.y] = -1;
+		squares.forEach((square) => {
+			var x = square.getAttribute("x");
+			var y = square.getAttribute("y");
+			if (x == data.x && y == data.y) {
+				square.classList.add('circle');
+			}
+		})
+}
+
+
+renderGame();
+
+
+
+</script>
+

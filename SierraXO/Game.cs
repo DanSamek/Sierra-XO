@@ -73,7 +73,7 @@ public class Game
                     continue;
                 }
 
-                AI.GetAIMove(map);
+                AI.GetAIMove(map, out var xx, out var yy);
                 if (CheckWin(map, out var player))
                 {
                     SomeoneWins = true;

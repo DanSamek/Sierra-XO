@@ -1,0 +1,32 @@
+.square {
+    width: 50px;
+    height: 50px;
+    border: 1px solid #ffffff57;
+    float: left;
+}
+
+.circle {
+    background-image: url("../img/circle.png");
+    background-size: 95%;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.cross {
+    background-image: url("../img/cross.png");
+    background-size: 90%;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+#game {
+    justify-content: start;
+}
+
+body{
+    background: black;
+}
+
+span, p{
+    color: white;
+}

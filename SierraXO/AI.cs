@@ -10,7 +10,8 @@ public class AI
     static Stopwatch evalTime = new();
     static bool defendNeeded = false;
 
-    public static double GetAIMove(int[,] map)
+    // todo defendNeeded as out value from eval -> use it in minimax
+    public static double GetAIMove(int[,] map , out int X, out int Y)
     {
         // AI is maximalizer
         var optimalPos = PositionsToCheck(map);
@@ -40,9 +41,9 @@ public class AI
 
         var maxEval = evalPoints.Max(x => x.Eval);
 
-        var p = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.OrderByDescending(x => x.Eval);
+        var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.OrderByDescending(x => x.Eval);
 
-        foreach (var arr in p)
+        foreach (var arr in points)
         {
             map[arr.Y, arr.X] = -1;
             var value = Minimax(map, Depth, false, alpha, beta);
@@ -67,6 +68,8 @@ public class AI
         TranspositionTable.ClearTable();
         positionEvaluated = 0;
 
+        X = bestX;
+        Y = bestY;
         evalTime.Reset();
         defendNeeded = false;
         return maxValue;
@@ -262,17 +265,17 @@ public class AI
             {
                 if (mustDefend)
                 {
-                    attackValue += 500;
+                    attackValue += 100;
                     return false;
                 }
-                attackValue += 2500;
+                attackValue += 1500;
                 return true;
             }
             if (opened == 2)
             {
                 if (mustDefend)
                 {
-                    attackValue += 2500;
+                    attackValue += 500;
                     return true;
                 }
                 attackValue += 5000;
@@ -286,19 +289,19 @@ public class AI
                 if (mustDefend)
                 {
                     attackValue += 100;
-                    return true;
+                    return false;
                 }
-                attackValue += 2500;
+                attackValue += 1000;
                 return false;
             }
             if (opened == 2)
             {
                 if (mustDefend)
                 {
-                    attackValue += 200;
+                    attackValue += 300;
                     return true;
                 }
-                attackValue += 4000;
+                attackValue += 3000;
                 return true;
             }
         }
