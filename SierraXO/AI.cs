@@ -4,13 +4,10 @@ using System.Text;
 namespace TicTacToeAI;
 public class AI
 {
-    public static int Depth = 7;
+    public static int Depth = 5;
     public static int positionEvaluated = 0;
 
     static Stopwatch evalTime = new();
-    static bool defendNeeded = false;
-
-    // todo defendNeeded as out value from eval -> use it in minimax
     public static double GetAIMove(int[,] map , out int X, out int Y)
     {
         // AI is maximalizer
@@ -24,10 +21,15 @@ public class AI
         stopwatch.Start();
 
         List<EvalPoint> evalPoints = new();
+
+        bool defendNeeded = false;
+        bool outDef;
+
         foreach (var arr in optimalPos)
         {
             map[arr[0], arr[1]] = -1;
-            var eval = CalculateCurrentPosition(map, true);
+            var eval = CalculateCurrentPosition(map, true, out outDef);
+            if (outDef) defendNeeded = true;
             map[arr[0], arr[1]] = 0;
             evalPoints.Add(new EvalPoint()
             {
@@ -41,7 +43,8 @@ public class AI
 
         var maxEval = evalPoints.Max(x => x.Eval);
 
-        var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.OrderByDescending(x => x.Eval);
+        //var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.OrderByDescending(x => x.Eval);
+        var points = evalPoints.OrderByDescending(x => x.Eval);
 
         foreach (var arr in points)
         {
@@ -77,6 +80,7 @@ public class AI
 
     static double Minimax(int[,] map, int depth, bool isMaximalizer, double alpha, double beta)
     {
+        bool outDef;
         positionEvaluated++;
         if (TranspositionTable.DoesPosExists(map, depth, isMaximalizer, out double? storedValue)) return storedValue.Value;
 
@@ -87,7 +91,7 @@ public class AI
         }
         if (depth == 0)
         {
-            var outValue = CalculateCurrentPosition(map, isMaximalizer);
+            var outValue = CalculateCurrentPosition(map, isMaximalizer, out outDef);
             return outValue;
         }
 
@@ -95,12 +99,14 @@ public class AI
 
         var optimalPos = PositionsToCheck(map);
         List<EvalPoint> evalPoints = new();
+        bool defendNeeded = false;
 
         foreach (var arr in optimalPos)
         {
             var isMax = isMaximalizer ? -1 : 1;
             map[arr[0], arr[1]] = isMax;
-            var eval = CalculateCurrentPosition(map, isMaximalizer);
+            var eval = CalculateCurrentPosition(map, isMaximalizer, out outDef);
+            if (outDef) defendNeeded = true;
             map[arr[0], arr[1]] = 0;
             evalPoints.Add(new EvalPoint()
             {
@@ -111,13 +117,14 @@ public class AI
         }
 
         var avg = Math.Round(evalPoints.Average(x => x.Eval), 2);
-
+        var maxEval = evalPoints.Max(x => x.Eval);
         // for maximalizer
         if (isMaximalizer)
         {
             double maxValue = int.MinValue;
             int possibleMaxValue = depth == 1 ? 10000 : (depth - 2) * 10000;
-            var p = evalPoints.Where(x => x.Eval > avg).OrderByDescending(x => x.Eval);
+            //var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.OrderByDescending(x => x.Eval).Where(x => x.Eval >= avg);
+            var p = evalPoints.OrderByDescending(x => x.Eval);
             foreach (var arr in p)
             {
                 map[arr.Y, arr.X] = -1;
@@ -126,10 +133,11 @@ public class AI
                 maxValue = Math.Max(value, maxValue);
                 alpha = Math.Max(alpha, maxValue);
 
-                if (beta <= alpha) break;
+                if (maxValue >= beta) return beta;   
+                if (maxValue > alpha) alpha = maxValue;
                 if (possibleMaxValue == maxValue) break;
             }
-            return maxValue;
+            return alpha;
         }
 
         // for minimalizer - player
@@ -137,20 +145,20 @@ public class AI
         {
             double maxValue = int.MaxValue;
             int possibleMaxValue = depth == 1 ? -10000 : (depth - 2) * -10000;
-            var p = evalPoints.Where(x => x.Eval < avg).OrderBy(x => x.Eval);
+            //var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.Where(x => x.Eval < avg).OrderBy(x => x.Eval >= avg);
+            var p = evalPoints.OrderBy(x => x.Eval);
             foreach (var arr in p)
             {
+                // https://www.chessprogramming.org/Alpha-Beta
                 map[arr.Y, arr.X] = 1;
                 double value = Minimax(map, depth - 1, true, alpha, beta);
                 map[arr.Y, arr.X] = 0;
 
-                maxValue = Math.Min(value, maxValue);
-                beta = Math.Min(maxValue, beta);
-
-                if (beta <= alpha) break;
+                if (maxValue <= alpha) return alpha; 
+                if (maxValue < beta) beta = maxValue;
                 if (possibleMaxValue == maxValue) break;
             }
-            return maxValue;
+            return beta;
         }
         return 0;
     }
@@ -205,8 +213,9 @@ public class AI
         return optimalPositions;
     }
 
-    public static double CalculateCurrentPosition(int[,] map, bool isMaximalizer)
+    public static double CalculateCurrentPosition(int[,] map, bool isMaximalizer, out bool defendNeeded)
     {
+        defendNeeded = false;
         evalTime.Start();
         var player = isMaximalizer ? -1 : 1;
         ResetVisited();
@@ -250,16 +259,18 @@ public class AI
     {
         attackValue = 0;
 
+        var anyEmptySpace = state.Any(x => x.EmptySpace);
         var opened = BetaGetOpenedSideCount(state, map);
+        var stateCount = state.Count;
 
-        if (Game.WinCount == state.Count)
+        if (Game.WinCount == stateCount)
         {
             attackValue = 10000;
             return true;
         }
 
         // 4
-        if(Game.WinCount - 1 == state.Count)
+        if(Game.WinCount - 1 == stateCount)
         {
             if (opened == 1)
             {
@@ -276,24 +287,25 @@ public class AI
                 if (mustDefend)
                 {
                     attackValue += 500;
-                    return true;
+                    return false;
                 }
                 attackValue += 5000;
                 return true;
             }
         }
-        else if (Game.WinCount - 2 == state.Count)
+        else if (Game.WinCount - 2 == stateCount)
         {
-            if (opened == 1)
+            /*if (opened == 1)
             {
                 if (mustDefend)
                 {
                     attackValue += 100;
-                    return false;
+                    return true;
                 }
                 attackValue += 1000;
-                return false;
-            }
+                return true;
+            }*/
+            
             if (opened == 2)
             {
                 if (mustDefend)
@@ -305,22 +317,29 @@ public class AI
                 return true;
             }
         }
-        else
-        {
-            if (opened == 2) attackValue += state.Count * 10;
-            if (opened == 1) attackValue += state.Count * 5;
-        }
+        
+        if (opened == 2) attackValue += stateCount * 10;
+        //if (opened == 1) attackValue += stateCount * 5;
+        
         return false;
     }
 
     public static int BetaGetOpenedSideCount(List<Point> points, int[,] map)
     {
+        
         if (points.Count == 1) return 2;
 
+        var anyEmpty = points.Any(x => x.EmptySpace);
+
+        if(points.ElementAt(0).Value == 0) points.RemoveAt(0);
+        if (points.ElementAt(points.Count -1 ).Value == 0) points.RemoveAt(points.Count - 1);
+
+        if (points.Count == 1) return 2;
         int openedCount = 0;
 
-        var firstP = points.First();
         var lastP = points.Last();
+        var firstP = points.First();
+
         var secondPointFromStart = points.ElementAt(1);
         var secondPointFromEnd = points.ElementAt(points.Count - 2);
 
@@ -357,6 +376,7 @@ public class AI
         Point start = new();
         start.X = startX;
         start.Y = startY;
+        start.Value = map[startY, startX];
         var neighbours = GetNeighbours(start, map, player, out var removedMirror);
 
         List<Point> outPoints = new();
@@ -379,17 +399,20 @@ public class AI
             // Nalezení dalšího bodu v cestě
             if (currPoint.X + currPoint.DiffX >= 0 && currPoint.X + currPoint.DiffX < Game.MapSize && currPoint.Y + currPoint.DiffY >= 0 && currPoint.Y + currPoint.DiffY < Game.MapSize)
             {
-                if (map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX] == player)
+                if (map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX] == player || (map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX] == 0 && !currPoint.EmptySpace))
                 {
-                    queue.Enqueue(new Point()
+                    var p = new Point()
                     {
                         DiffX = currPoint.DiffX,
                         DiffY = currPoint.DiffY,
                         Parent = currPoint,
                         X = currPoint.X + currPoint.DiffX,
                         Y = currPoint.Y + currPoint.DiffY,
-                        MoveType = currPoint.MoveType
-                    });
+                        MoveType = currPoint.MoveType,
+                        EmptySpace = map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX] == 0,
+                        Value = map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX]
+                    };
+                    queue.Enqueue(p);
                     continue;
                 }
             }
@@ -416,20 +439,20 @@ public class AI
         List<Point> allPoints = new List<Point>()
         {
             // X
-            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = 1, MoveType = MoveTypes.Horizontal},
-            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = -1, MoveType = MoveTypes.Horizontal},
+            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = 1, MoveType = MoveTypes.Horizontal, EmptySpace = currentPoint.EmptySpace},
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y, Parent = currentPoint, DiffX = -1, MoveType = MoveTypes.Horizontal, EmptySpace = currentPoint.EmptySpace},
 
             //Y
-            new Point(){ X = currentPoint.X, Y = currentPoint.Y + 1, Parent = currentPoint, DiffY = 1, MoveType =  MoveTypes.Vertical},
-            new Point(){ X = currentPoint.X, Y = currentPoint.Y - 1, Parent = currentPoint,  DiffY = -1, MoveType = MoveTypes.Vertical},
+            new Point(){ X = currentPoint.X, Y = currentPoint.Y + 1, Parent = currentPoint, DiffY = 1, MoveType =  MoveTypes.Vertical, EmptySpace = currentPoint.EmptySpace},
+            new Point(){ X = currentPoint.X, Y = currentPoint.Y - 1, Parent = currentPoint,  DiffY = -1, MoveType = MoveTypes.Vertical, EmptySpace = currentPoint.EmptySpace},
 
             // Dia
-            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = -1, DiffY = -1,MoveType = MoveTypes.LeftDiagonal},
-            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = 1, DiffY = 1,MoveType = MoveTypes.LeftDiagonal},
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = -1, DiffY = -1,MoveType = MoveTypes.LeftDiagonal, EmptySpace = currentPoint.EmptySpace},
+            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = 1, DiffY = 1,MoveType = MoveTypes.LeftDiagonal, EmptySpace = currentPoint.EmptySpace},
 
             // Dia
-            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = -1, DiffY = 1,MoveType = MoveTypes.RightDiagonal},
-            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = 1, DiffY = -1,MoveType = MoveTypes.RightDiagonal},
+            new Point(){ X = currentPoint.X - 1, Y = currentPoint.Y + 1, Parent = currentPoint, DiffX = -1, DiffY = 1,MoveType = MoveTypes.RightDiagonal, EmptySpace = currentPoint.EmptySpace},
+            new Point(){ X = currentPoint.X + 1, Y = currentPoint.Y - 1, Parent = currentPoint, DiffX = 1, DiffY = -1,MoveType = MoveTypes.RightDiagonal, EmptySpace = currentPoint.EmptySpace},
         };
 
 
@@ -444,6 +467,7 @@ public class AI
             isOk = p.X >= 0 && p.X < Game.MapSize && p.Y >= 0 && p.Y < Game.MapSize && map[p.Y, p.X] == player;
 
             if (!isOk) continue;
+            
             // Má bod zrcadlo
             mirroredX = p.X - (p.DiffX * 2);
             mirroredY = p.Y - (p.DiffY * 2);
@@ -457,8 +481,9 @@ public class AI
                     continue;
                 }
             }
-
+            
             currentPoint.MoveType = p.MoveType;
+            p.Value = map[p.Y, p.X];
             IsVisited(currentPoint);
             outPoints.Add(p);
         }
@@ -517,7 +542,7 @@ static public class TranspositionTable
         var positionString = $"{sb.ToString()}|{isMaximalizer}|{depth}";
         if (!transpositionTable.TryGetValue(positionString, out var value))
         {
-            var eval = AI.CalculateCurrentPosition(map, isMaximalizer);
+            var eval = AI.CalculateCurrentPosition(map, isMaximalizer, out var outDef);
             transpositionTable.Add(positionString, eval);
             return false;
         }
@@ -532,8 +557,10 @@ public class Point : PointBase
     public Point Parent { get; set; }
     public int DiffX { get; set; } = 0;
     public int DiffY { get; set; } = 0;
-
     public MoveTypes MoveType { get; set; }
+
+    public bool EmptySpace { get; set; }
+    public int Value { get; set; }
 }
 
 public class PointBase

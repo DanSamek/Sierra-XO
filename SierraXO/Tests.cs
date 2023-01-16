@@ -3,6 +3,8 @@ public static class Tests
 {
     public static void EvalutationTests()
     {
+        bool outDef;
+
         int[,] testMap = new int[5, 5]
         {
             { 0,0,0,0,0 },
@@ -13,7 +15,7 @@ public static class Tests
         };
 
         Game.MapSize = 5;
-        var eval = AI.CalculateCurrentPosition(testMap, true);
+        var eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, 0);
 
         testMap = new int[5, 5]
@@ -25,7 +27,7 @@ public static class Tests
             { 0,0,0,0,0 }
         };
 
-        eval = AI.CalculateCurrentPosition(testMap, true);
+        eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, 10);
 
         testMap = new int[5, 5]
@@ -36,7 +38,7 @@ public static class Tests
             { 0,0,-1,0,0 },
             { 0,0,0,0,0 }
         };
-        eval = AI.CalculateCurrentPosition(testMap, true);
+        eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, 60);
 
         testMap = new int[5, 5]
@@ -48,7 +50,7 @@ public static class Tests
             { 0,0,0,0,0 }
         };
         Game.WinCount = 5;
-        eval = AI.CalculateCurrentPosition(testMap, true);
+        eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, 2500);
 
 
@@ -60,7 +62,7 @@ public static class Tests
             { 0,0,0,0,0 },
             { 0,0,0,0,0 }
         };
-        eval = AI.CalculateCurrentPosition(testMap, true);
+        eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, 7500);
 
         testMap = new int[5, 5]
@@ -71,7 +73,7 @@ public static class Tests
             { 0,0,-1,0,0 },
             { 0,0,0,0,0 }
         };
-        eval = AI.CalculateCurrentPosition(testMap, true);
+        eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, 10060);
 
 
@@ -83,7 +85,7 @@ public static class Tests
             { 0,0,0,0,0 },
             { 0,0,0,0,0 }
         };
-        eval = AI.CalculateCurrentPosition(testMap, true);
+        eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, 50);
 
 
@@ -95,7 +97,7 @@ public static class Tests
             { -1,0,0,0,0 },
             { 0,0,0,0,0 }
         };
-        eval = AI.CalculateCurrentPosition(testMap, true);
+        eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, 20);
 
         testMap = new int[5, 5]
@@ -106,7 +108,7 @@ public static class Tests
             {0,0,1,0,0},
             {0,0,0,0,0}
         };
-        eval = AI.CalculateCurrentPosition(testMap, false);
+        eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, -10080);
 
         testMap = new int[5, 5]
@@ -117,7 +119,7 @@ public static class Tests
             {0,0,-1,0,0},
             {0,0,0,0,0}
         };
-        eval = AI.CalculateCurrentPosition(testMap, true);
+        eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, 10080);
 
         testMap = new int[5, 5]
@@ -128,7 +130,7 @@ public static class Tests
             {0,0,-1,0,0},
             {0,0,0,0,0}
         };
-        eval = AI.CalculateCurrentPosition(testMap, true);
+        eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, 2580);
     }
 
@@ -189,7 +191,7 @@ public static class Tests
         };
         Game.MapSize = 8;
         AI.Depth = 4;
-        var r = AI.CalculateCurrentPosition(testMap, true);
+        var r = AI.CalculateCurrentPosition(testMap, true, out var outDef);
         Console.WriteLine(r);
         eval = AI.GetAIMove(testMap, out x, out y);
         Game.DrawMap(testMap);
