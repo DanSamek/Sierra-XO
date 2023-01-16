@@ -7,6 +7,9 @@ namespace SierraXOWeb.Controllers
 {
     public class HomeController : Controller
     {
+
+        private object _lock = new object();
+
         public IActionResult Index()
         {
             return View();
@@ -15,27 +18,30 @@ namespace SierraXOWeb.Controllers
         [HttpPost("/move")]
         public IActionResult GetAiMove([FromBody] MoveSettings moveSettings)
         {
-            AIMove move = new();
-            Game.MapSize = moveSettings.MapSize;
-            Game.WinCount = moveSettings.WinCount;
-            int[,] dimmap = new int[moveSettings.MapSize, moveSettings.MapSize];
+            lock (_lock)
+            {
+                AIMove move = new();
+                Game.MapSize = moveSettings.MapSize;
+                Game.WinCount = moveSettings.WinCount;
+                int[,] dimmap = new int[moveSettings.MapSize, moveSettings.MapSize];
 
-            for (int y = 0; y < moveSettings.MapSize; y++)
-                for (int x = 0; x < moveSettings.MapSize; x++)
-                    dimmap[y, x] = moveSettings.Map[y][x];
-            try
-            {
-                AI.Depth = moveSettings.Depth;
-                AI.GetAIMove(dimmap, out int X, out int Y);
-                move.X = X;
-                move.Y = Y;
-                return Json(move);
-            }
-            catch (Exception)
-            {
-                move.X = -1;
-                move.Y = -1;
-                return Json(move);
+                for (int y = 0; y < moveSettings.MapSize; y++)
+                    for (int x = 0; x < moveSettings.MapSize; x++)
+                        dimmap[y, x] = moveSettings.Map[y][x];
+                try
+                {
+                    AI.Depth = moveSettings.Depth;
+                    AI.GetAIMove(dimmap, out int X, out int Y);
+                    move.X = X;
+                    move.Y = Y;
+                    return Json(move);
+                }
+                catch (Exception)
+                {
+                    move.X = -1;
+                    move.Y = -1;
+                    return Json(move);
+                }
             }
         }
 
