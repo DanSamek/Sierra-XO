@@ -132,6 +132,21 @@ public static class Tests
         };
         eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
         AreEqual(eval, 2580);
+
+
+
+
+        testMap = new int[5, 5]
+        {
+            {0,0,-1,0,0},
+            {0,0,0,0,0},
+            {0,0,-1,0,0},
+            {0,0,0,0,0},
+            {0,0,-1,0,0}
+        };
+        eval = AI.CalculateCurrentPosition(testMap, true, out outDef);
+        AreEqual(eval, 2580);
+
     }
 
     static void AreEqual(double eval, double exepted)

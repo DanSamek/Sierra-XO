@@ -43,8 +43,8 @@ public class AI
 
         var maxEval = evalPoints.Max(x => x.Eval);
 
-        //var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.OrderByDescending(x => x.Eval);
-        var points = evalPoints.OrderByDescending(x => x.Eval);
+        var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.OrderByDescending(x => x.Eval);
+        //var points = evalPoints.OrderByDescending(x => x.Eval);
 
         foreach (var arr in points)
         {
@@ -123,9 +123,9 @@ public class AI
         {
             double maxValue = int.MinValue;
             int possibleMaxValue = depth == 1 ? 10000 : (depth - 2) * 10000;
-            //var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.OrderByDescending(x => x.Eval).Where(x => x.Eval >= avg);
-            var p = evalPoints.OrderByDescending(x => x.Eval);
-            foreach (var arr in p)
+            var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.OrderByDescending(x => x.Eval).Where(x => x.Eval >= avg);
+            //var p = evalPoints.OrderByDescending(x => x.Eval);
+            foreach (var arr in points)
             {
                 map[arr.Y, arr.X] = -1;
                 double value = Minimax(map, depth - 1, false, alpha, beta);
@@ -145,9 +145,9 @@ public class AI
         {
             double maxValue = int.MaxValue;
             int possibleMaxValue = depth == 1 ? -10000 : (depth - 2) * -10000;
-            //var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.Where(x => x.Eval < avg).OrderBy(x => x.Eval >= avg);
-            var p = evalPoints.OrderBy(x => x.Eval);
-            foreach (var arr in p)
+            var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.Where(x => x.Eval < avg).OrderBy(x => x.Eval >= avg);
+            //var p = evalPoints.OrderBy(x => x.Eval);
+            foreach (var arr in points)
             {
                 // https://www.chessprogramming.org/Alpha-Beta
                 map[arr.Y, arr.X] = 1;
@@ -218,15 +218,34 @@ public class AI
         defendNeeded = false;
         evalTime.Start();
         var player = isMaximalizer ? -1 : 1;
-        ResetVisited();
         double myAttack = 0;
         double enemyAttack = 0;
-        List<List<Point>> positionStates = new();
+        bool mustDefend = false;
 
         var reversedPlayer = isMaximalizer ? 1 : -1;
-        for (int y = 0; y < Game.MapSize; y++) for (int x = 0; x < Game.MapSize; x++) if (map[y, x] == reversedPlayer) BFS(x, y, map, positionStates, reversedPlayer);
+        for (int y = 0; y < Game.MapSize; y++)
+        {
+            for (int x = 0; x < Game.MapSize; x++)
+            {
+                if (map[y, x] == reversedPlayer)
+                {
+                    BFS(x, y, map, positionStates, reversedPlayer);
+                }
+            }
+        }
+        foreach (var state in positionStates.Where(x => x.Count > 1))
+        {
+            foreach (var op in state)
+            {
+                var p = alonePoints.FirstOrDefault(x => x.X == op.X && x.Y == op.Y);
+                if (p != null) alonePoints.Remove(p);
 
-        bool mustDefend = false;
+            }
+        }
+
+        
+        enemyAttack += alonePoints.Count * 10;
+
         foreach (var state in positionStates)
         {
             if (GetValueForCurrentState(state, map, out var attack))
@@ -236,36 +255,61 @@ public class AI
             }
             enemyAttack += attack;
         }
-
-        positionStates.Clear();
+       
         ResetVisited();
-        for (int y = 0; y < Game.MapSize; y++) for (int x = 0; x < Game.MapSize; x++) if (map[y, x] == player) BFS(x, y, map, positionStates, player);
+        for (int y = 0; y < Game.MapSize; y++)
+        {
+            for (int x = 0; x < Game.MapSize; x++)
+            {
+                if (map[y, x] == player)
+                {
+                    BFS(x, y, map, positionStates, player);
+                }
+            }
+        }
 
+        foreach (var state in positionStates.Where(x => x.Count > 1))
+        {
+            foreach (var op in state)
+            {
+                var p = alonePoints.FirstOrDefault(x => x.X == op.X && x.Y == op.Y);
+                if (p != null) alonePoints.Remove(p);
+
+            }
+        }
+
+
+        myAttack += alonePoints.Count * 10;
         foreach (var state in positionStates)
         {
             GetValueForCurrentState(state, map, out var attack, mustDefend);
             myAttack += attack;
         }
 
+
         enemyAttack = isMaximalizer ? -enemyAttack : enemyAttack;
         myAttack = isMaximalizer ? myAttack : -myAttack;
 
         var evaluatedValue = myAttack + enemyAttack;
         evalTime.Stop();
+
+        ResetVisited();
         return evaluatedValue;
     }
 
     public static bool GetValueForCurrentState(List<Point> state, int[,] map, out double attackValue, bool mustDefend = false)
     {
         attackValue = 0;
-
-        var anyEmptySpace = state.Any(x => x.EmptySpace);
         var opened = BetaGetOpenedSideCount(state, map);
-        var stateCount = state.Count;
+
+        var emptySpaceCount = state.Count(x => x.EmptySpace);
+        var stateCount = state.Count - emptySpaceCount;
+
+        var minusVal = -(emptySpaceCount * 100);
 
         if (Game.WinCount == stateCount)
         {
-            attackValue = 10000;
+            attackValue = 10000 + minusVal;
             return true;
         }
 
@@ -279,7 +323,7 @@ public class AI
                     attackValue += 100;
                     return false;
                 }
-                attackValue += 1500;
+                attackValue += 2500 + minusVal;
                 return true;
             }
             if (opened == 2)
@@ -289,7 +333,7 @@ public class AI
                     attackValue += 500;
                     return false;
                 }
-                attackValue += 5000;
+                attackValue += 7500 + minusVal;
                 return true;
             }
         }
@@ -313,7 +357,7 @@ public class AI
                     attackValue += 300;
                     return true;
                 }
-                attackValue += 3000;
+                attackValue += 4200 + minusVal;
                 return true;
             }
         }
@@ -369,6 +413,8 @@ public class AI
     private static bool[,] verticalVisited = new bool[Game.MapSize, Game.MapSize];
     private static bool[,] rightDiagonalVisited = new bool[Game.MapSize, Game.MapSize];
     private static bool[,] leftDiagonalVisited = new bool[Game.MapSize, Game.MapSize];
+    private static HashSet<Point> alonePoints = new HashSet<Point>();
+    private static List<List<Point>> positionStates = new();
 
     static void BFS(int startX, int startY, int[,] map, List<List<Point>> positionStates, int player)
     {
@@ -378,6 +424,7 @@ public class AI
         start.Y = startY;
         start.Value = map[startY, startX];
         var neighbours = GetNeighbours(start, map, player, out var removedMirror);
+        HashSet<Point> addedAlone = new();
 
         List<Point> outPoints = new();
         if (neighbours.Count() == 0)
@@ -409,7 +456,8 @@ public class AI
                         X = currPoint.X + currPoint.DiffX,
                         Y = currPoint.Y + currPoint.DiffY,
                         MoveType = currPoint.MoveType,
-                        EmptySpace = map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX] == 0,
+                        //EmptySpace = map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX] == 0,
+                        EmptySpace = !(map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX] == player),
                         Value = map[currPoint.Y + currPoint.DiffY, currPoint.X + currPoint.DiffX]
                     };
                     queue.Enqueue(p);
@@ -417,20 +465,29 @@ public class AI
                 }
             }
             // Pokud zde není uložíme cestu
-            var parent = currPoint;
+            var parent = currPoint.EmptySpace ? currPoint.Parent : currPoint;
             outPoints = new();
-            if (parent.Parent == null)
-            {
-                positionStates.Add(outPoints);
-                continue;
-            }
+            if (parent == null) continue;
+            
             while (parent != null)
             {
                 outPoints.Add(parent);
                 parent = parent.Parent;
             }
+
+            if (outPoints.Count == 1)
+            {
+                alonePoints.Add(outPoints.ElementAt(0));
+                continue;
+            }
+            foreach (var op in outPoints)
+            {
+                var sameP = alonePoints.FirstOrDefault(x => x.Y == op.Y && x.X == op.X);
+                if (sameP != null) alonePoints.Remove(sameP);
+            }
             positionStates.Add(outPoints);
         }
+
     }
 
     static IEnumerable<Point> GetNeighbours(Point currentPoint, int[,] map, int player, out bool removedMirror)
@@ -464,10 +521,12 @@ public class AI
 
         foreach (var p in allPoints)
         {
-            isOk = p.X >= 0 && p.X < Game.MapSize && p.Y >= 0 && p.Y < Game.MapSize && map[p.Y, p.X] == player;
+            isOk = p.X >= 0 && p.X < Game.MapSize && p.Y >= 0 && p.Y < Game.MapSize && (map[p.Y, p.X] == 0 || map[p.Y, p.X] == player);
 
             if (!isOk) continue;
-            
+
+            if (map[p.Y, p.X] == 0) p.EmptySpace = true;
+
             // Má bod zrcadlo
             mirroredX = p.X - (p.DiffX * 2);
             mirroredY = p.Y - (p.DiffY * 2);
@@ -528,6 +587,8 @@ public class AI
         Array.Clear(verticalVisited);
         Array.Clear(rightDiagonalVisited);
         Array.Clear(leftDiagonalVisited);
+        positionStates.Clear();
+        alonePoints.Clear();
     }
 }
 
