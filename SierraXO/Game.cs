@@ -12,6 +12,10 @@ public class Game
 
     public static void Main(string[] args)
     {
+        Tests.AITests();
+
+        return;
+
         TicTacToe();
     }
 

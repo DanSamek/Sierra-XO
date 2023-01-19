@@ -196,18 +196,20 @@ public static class Tests
         testMap = new int[8, 8]
         {
             {0,0,0,0,0,0,0,0},
+            {0,0,0,0,0,1,0,0},
+            {0,-1,1,1,1,0,0,0},
+            {0,-1,0,0,0,1,0,0},
             {0,0,0,0,0,0,0,0},
-            {0,0,0,0,0,-1,0,0},
-            {0,0,1,0,-1,1,0,0},
-            {0,0,-1,-1,1,0,0,0},
-            {0,0,1,1,0,0,0,0},
+            {0,0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0,0},
         };
+        Game.WinCount = 5;
         Game.MapSize = 8;
         AI.Depth = 4;
         var r = AI.CalculateCurrentPosition(testMap, true, out var outDef);
         Console.WriteLine(r);
+        Console.WriteLine(outDef);
         eval = AI.GetAIMove(testMap, out x, out y);
         Game.DrawMap(testMap);
         AreEqual(eval, 5000);
@@ -221,7 +223,8 @@ public static class Tests
             {0,0,-1,0,0},
             {0,-1,-1,-1,0},
             {0,0,-1,0,0}
-        };
+        }; 
+        Game.WinCount = 4;
         eval = AI.GetAIMove(testMap, out x, out y);
         Game.DrawMap(testMap);
         AreEqual(eval, 5000);

@@ -123,7 +123,7 @@ public class AI
         {
             double maxValue = int.MinValue;
             int possibleMaxValue = depth == 1 ? 10000 : (depth - 2) * 10000;
-            var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.OrderByDescending(x => x.Eval).Where(x => x.Eval >= avg);
+            var points = defendNeeded ? evalPoints.Where(x => x.Eval == maxEval) : evalPoints.Where(x => x.Eval >= avg).OrderByDescending(x => x.Eval);
             //var p = evalPoints.OrderByDescending(x => x.Eval);
             foreach (var arr in points)
             {
@@ -133,11 +133,10 @@ public class AI
                 maxValue = Math.Max(value, maxValue);
                 alpha = Math.Max(alpha, maxValue);
 
-                if (maxValue >= beta) return beta;   
-                if (maxValue > alpha) alpha = maxValue;
+                if (maxValue > beta) break;
                 if (possibleMaxValue == maxValue) break;
             }
-            return alpha;
+            return maxValue;
         }
 
         // for minimalizer - player
@@ -152,13 +151,14 @@ public class AI
                 // https://www.chessprogramming.org/Alpha-Beta
                 map[arr.Y, arr.X] = 1;
                 double value = Minimax(map, depth - 1, true, alpha, beta);
+                maxValue = Math.Min(maxValue, value);
                 map[arr.Y, arr.X] = 0;
 
-                if (maxValue <= alpha) return alpha; 
-                if (maxValue < beta) beta = maxValue;
+                if (value < alpha) break;
+                beta = Math.Min(beta, maxValue);
                 if (possibleMaxValue == maxValue) break;
             }
-            return beta;
+            return maxValue;
         }
         return 0;
     }
@@ -323,7 +323,7 @@ public class AI
                     attackValue += 100;
                     return false;
                 }
-                attackValue += 2500 + minusVal;
+                attackValue += 3000 + minusVal;
                 return true;
             }
             if (opened == 2)
