@@ -8,6 +8,10 @@ public class AI
     public static int positionEvaluated = 0;
 
     static Stopwatch evalTime = new();
+
+    /// <summary>
+    /// Main function of AI
+    /// </summary>
     public static double GetAIMove(int[,] map , out int X, out int Y)
     {
         // AI is maximalizer
@@ -78,6 +82,10 @@ public class AI
         return maxValue;
     }
 
+
+    /// <summary>
+    /// Optimalized alpha beta pruning with transposition table and move filtering
+    /// </summary>
     static double Minimax(int[,] map, int depth, bool isMaximalizer, double alpha, double beta)
     {
         bool outDef;
@@ -163,6 +171,9 @@ public class AI
         return 0;
     }
 
+    /// <summary>
+    /// Get best moves to play in current position
+    /// </summary>
     static HashSet<int[]> PositionsToCheck(int[,] map)
     {
         HashSet<int[]> optimalPositions = new HashSet<int[]>();
@@ -213,6 +224,10 @@ public class AI
         return optimalPositions;
     }
 
+    /// <summary>
+    /// Main function for eval
+    /// TODO optimalization
+    /// </summary>
     public static double CalculateCurrentPosition(int[,] map, bool isMaximalizer, out bool defendNeeded)
     {
         defendNeeded = false;
@@ -297,6 +312,9 @@ public class AI
         return evaluatedValue;
     }
 
+    /// <summary>
+    /// Evaulation of current state 
+    /// </summary>
     public static bool GetValueForCurrentState(List<Point> state, int[,] map, out double attackValue, bool mustDefend = false)
     {
         attackValue = 0;
@@ -323,7 +341,7 @@ public class AI
                     attackValue += 100;
                     return false;
                 }
-                attackValue += 3000 + minusVal;
+                attackValue += 2000 + minusVal;
                 return true;
             }
             if (opened == 2)
@@ -333,7 +351,7 @@ public class AI
                     attackValue += 500;
                     return false;
                 }
-                attackValue += 7500 + minusVal;
+                attackValue += 4000 + minusVal;
                 return true;
             }
         }
@@ -354,10 +372,10 @@ public class AI
             {
                 if (mustDefend)
                 {
-                    attackValue += 300;
+                    attackValue += 150;
                     return true;
                 }
-                attackValue += 4200 + minusVal;
+                attackValue += 1000 + minusVal;
                 return true;
             }
         }
@@ -368,6 +386,9 @@ public class AI
         return false;
     }
 
+    /// <summary>
+    /// Get count of opened sides
+    /// </summary>
     public static int BetaGetOpenedSideCount(List<Point> points, int[,] map)
     {
         
@@ -399,12 +420,10 @@ public class AI
         var Lx = lastP.X + lastDiffX;
         var Ly = lastP.Y + lastDiffY;
 
-        if (Fx >= 0 && Fy >= 0 && Fx < Game.MapSize && Fy < Game.MapSize)
-            if (map[Fy, Fx] == 0) openedCount++;
+        if (Fx >= 0 && Fy >= 0 && Fx < Game.MapSize && Fy < Game.MapSize) if (map[Fy, Fx] == 0) openedCount++;
 
 
-        if (Lx >= 0 && Ly >= 0 && Lx < Game.MapSize && Ly < Game.MapSize)
-            if (map[Ly, Lx] == 0) openedCount++;
+        if (Lx >= 0 && Ly >= 0 && Lx < Game.MapSize && Ly < Game.MapSize) if (map[Ly, Lx] == 0) openedCount++;
 
         return openedCount;
     }
@@ -416,7 +435,11 @@ public class AI
     private static HashSet<Point> alonePoints = new HashSet<Point>();
     private static List<List<Point>> positionStates = new();
 
-    static void BFS(int startX, int startY, int[,] map, List<List<Point>> positionStates, int player)
+
+    /// <summary>
+    /// BFS is used to find all connections
+    /// </summary>
+    public static void BFS(int startX, int startY, int[,] map, List<List<Point>> positionStates, int player)
     {
         Queue<Point> queue = new();
         Point start = new();
@@ -527,13 +550,13 @@ public class AI
 
             if (map[p.Y, p.X] == 0) p.EmptySpace = true;
 
-            // Má bod zrcadlo
+            // Has point mirror
             mirroredX = p.X - (p.DiffX * 2);
             mirroredY = p.Y - (p.DiffY * 2);
 
             if (mirroredX >= 0 && mirroredY >= 0 && mirroredX < Game.MapSize && mirroredY < Game.MapSize)
             {
-                // Je někde uprostřed
+                // Is somewhere in middle
                 if (map[mirroredY, mirroredX] == player)
                 {
                     removedMirror = true;
@@ -549,7 +572,10 @@ public class AI
 
         return outPoints;
     }
-
+    /// <summary>
+    /// Is point visited via all move types
+    /// <see cref="MoveTypes"/>
+    /// </summary>
     private static bool IsVisited(Point currPoint)
     {
         switch (currPoint.MoveType)
@@ -592,6 +618,9 @@ public class AI
     }
 }
 
+/// <summary>
+/// Transposition table for bigger depth
+/// </summary>
 static public class TranspositionTable
 {
     static Dictionary<string, double> transpositionTable = new Dictionary<string, double>();
